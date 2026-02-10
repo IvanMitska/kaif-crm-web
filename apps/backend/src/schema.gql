@@ -1,0 +1,36 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type Mutation {
+  completeTask(id: String!): String!
+  createCompany(email: String, inn: String, name: String!, phone: String, website: String): String!
+  createContact(companyId: String, email: String, firstName: String!, lastName: String!, phone: String): String!
+  createDeal(amount: Int!, companyId: String, contactId: String, title: String!): String!
+  createTask(contactId: String, dealId: String, description: String, dueDate: String, priority: String, title: String!): String!
+  deleteCompany(id: String!): Boolean!
+  deleteContact(id: String!): Boolean!
+  deleteDeal(id: String!): Boolean!
+  deleteTask(id: String!): Boolean!
+  login(email: String!, password: String!, twoFactorCode: String): String!
+  logout(refreshToken: String!): Boolean!
+  moveDeal(dealId: String!, stageId: String!): String!
+  refreshTokens(refreshToken: String!): String!
+  register(email: String!, firstName: String!, lastName: String!, middleName: String, password: String!, phone: String): String!
+}
+
+type Query {
+  calendarTasks(date: String, view: String): String!
+  companies(search: String, skip: Int, take: Int): String!
+  company(id: String!): String!
+  contact(id: String!): String!
+  contacts(search: String, skip: Int, take: Int): String!
+  deal(id: String!): String!
+  deals(pipelineId: String, search: String, skip: Int, take: Int): String!
+  dealsByStage(pipelineId: String!): String!
+  me: String!
+  task(id: String!): String!
+  tasks(assigneeId: String, priority: String, status: String): String!
+  user(id: String!): String!
+  users(skip: Float, take: Float): String!
+}

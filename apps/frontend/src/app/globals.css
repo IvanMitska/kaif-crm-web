@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 9%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 4%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 64%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 0 0% 83%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+@layer utilities {
+  /* Minimal card style */
+  .card-minimal {
+    @apply bg-white border border-gray-100 rounded-lg;
+  }
+
+  /* Subtle hover effect */
+  .hover-subtle {
+    @apply hover:bg-gray-50 transition-colors duration-150;
+  }
+
+  /* Clean input style */
+  .input-minimal {
+    @apply bg-gray-50 border-0 focus:bg-white focus:ring-1 focus:ring-gray-200 transition-all duration-150;
+  }
+
+  /* Minimal badge */
+  .badge-minimal {
+    @apply bg-gray-900 text-white text-xs font-medium px-2 py-0.5 rounded;
+  }
+
+  /* Smooth transitions */
+  .transition-smooth {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  /* Clean scrollbar */
+  .scrollbar-minimal::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-minimal::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .scrollbar-minimal::-webkit-scrollbar-thumb {
+    @apply bg-gray-200 rounded-full;
+  }
+
+  .scrollbar-minimal::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-300;
+  }
+}
+
+/* Remove default focus outline and use custom */
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  @apply ring-1 ring-gray-300 ring-offset-0;
+}
+
+/* Disable text selection on UI elements */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}

@@ -1,0 +1,36 @@
+{
+  "name": "kaif-crm",
+  "version": "0.1.0",
+  "private": true,
+  "description": "KAIF CRM - современная система управления взаимоотношениями с клиентами",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "backend:dev": "pnpm --filter @kaif-crm/backend dev",
+    "frontend:dev": "pnpm --filter @kaif-crm/frontend dev",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "db:migrate": "pnpm --filter @kaif-crm/backend db:migrate",
+    "db:seed": "pnpm --filter @kaif-crm/backend db:seed"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "prettier": "^3.3.2",
+    "turbo": "^2.0.6",
+    "typescript": "^5.5.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.6"
+}

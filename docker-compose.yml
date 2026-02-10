@@ -1,0 +1,140 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: kaif-crm-postgres
+    environment:
+      POSTGRES_USER: kaifcrm
+      POSTGRES_PASSWORD: kaifcrm
+      POSTGRES_DB: kaifcrm
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - kaif-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kaifcrm"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: kaif-crm-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - kaif-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: kaif-crm-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - kaif-network
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  backend:
+    build:
+      context: .
+      dockerfile: ./infrastructure/docker/backend/Dockerfile
+      target: development
+    container_name: kaif-crm-backend
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://kaifcrm:kaifcrm@postgres:5432/kaifcrm?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+      JWT_REFRESH_SECRET: your-super-secret-refresh-jwt-key-change-this-in-production
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./apps/backend:/app/apps/backend
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/backend/node_modules
+    networks:
+      - kaif-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    command: pnpm --filter @kaif-crm/backend dev
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./infrastructure/docker/frontend/Dockerfile
+      target: development
+    container_name: kaif-crm-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NEXT_PUBLIC_WEBSOCKET_URL: ws://localhost:3001
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/frontend:/app/apps/frontend
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/frontend/node_modules
+      - /app/apps/frontend/.next
+    networks:
+      - kaif-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+    command: pnpm --filter @kaif-crm/frontend dev
+
+  nginx:
+    image: nginx:alpine
+    container_name: kaif-crm-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infrastructure/docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./infrastructure/docker/nginx/conf.d:/etc/nginx/conf.d
+    networks:
+      - kaif-network
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  kaif-network:
+    driver: bridge
