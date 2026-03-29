@@ -1,10 +1,10 @@
 [build]
 builder = "nixpacks"
-buildCommand = "pnpm install && pnpm run build"
+buildCommand = "pnpm install && pnpm run build && cp -r apps/frontend/public apps/frontend/.next/standalone/apps/frontend/ && cp -r apps/frontend/.next/static apps/frontend/.next/standalone/apps/frontend/.next/"
 
 [deploy]
-startCommand = "node apps/frontend/.next/standalone/server.js"
+startCommand = "cd apps/frontend/.next/standalone && PORT=$PORT HOSTNAME=0.0.0.0 node apps/frontend/server.js"
 healthcheckPath = "/"
-healthcheckTimeout = 100
+healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
