@@ -12,8 +12,8 @@ import {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-// Enable mock mode when backend is unavailable
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true' || true; // Default to true for dev
+// Enable mock mode only when explicitly set or when running locally without backend
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
 export const api = axios.create({
   baseURL: `${API_URL}/api`,

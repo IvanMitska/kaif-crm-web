@@ -14,6 +14,7 @@ import { TasksModule } from './modules/tasks/tasks.module';
 import { MessagesModule } from './modules/messages/messages.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { LeadsModule } from './modules/leads/leads.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     MessagesModule,
     AnalyticsModule,
     NotificationsModule,
+    LeadsModule,
   ],
 })
 export class AppModule {}
