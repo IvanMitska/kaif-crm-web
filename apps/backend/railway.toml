@@ -3,7 +3,7 @@ builder = "nixpacks"
 buildCommand = "pnpm install && pnpm run build"
 
 [deploy]
-startCommand = "npx prisma db push --schema=./prisma/schema.prisma || true && node dist/main.js"
+startCommand = "cd apps/backend && npx prisma db push || true && node dist/main.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
