@@ -3,3 +3,6 @@ cmds = ["npm install -g corepack@0.24.1 && corepack enable && pnpm install --no-
 
 [phases.build]
 cmds = ["pnpm run build"]
+
+[start]
+cmd = "npx prisma db push --schema=./prisma/schema.prisma || true && node dist/main.js"
