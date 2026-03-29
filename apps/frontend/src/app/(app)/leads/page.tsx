@@ -1,354 +1,812 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Search,
-  Filter,
-  Send,
-  Paperclip,
+  Plus,
   MoreHorizontal,
   Phone,
-  Archive,
-  CheckCircle2,
-  Plus,
-  ChevronDown,
+  Mail,
+  Globe,
+  MessageSquare,
+  Instagram,
+  Loader2,
+  Zap,
+  ArrowRight,
   Clock,
-  Circle,
+  LayoutGrid,
+  List,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  CheckSquare,
+  Square,
+  Minus,
+  Eye,
+  Pencil,
+  Copy,
+  Trash2,
+  FileText,
+  Calendar,
+  ShoppingBag
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { leadsApi } from "@/lib/api";
+import { LeadModal } from "@/components/leads/LeadModal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
-type Lead = {
+interface Lead {
   id: string;
-  leadNumber: string;
-  name?: string;
-  lastMessage: string;
-  time: string;
-  isOnline?: boolean;
+  name: string;
+  source: string;
   status: string;
-  channel?: string;
-};
+  email?: string;
+  phone?: string;
+  company?: string;
+  description?: string;
+  createdAt: string;
+}
 
-type Message = {
-  id: string;
-  text: string;
-  time: string;
-  sender: "user" | "lead";
-};
-
-const leads: Lead[] = [
-  { id: "1", leadNumber: "41425147", name: "Poliza", lastMessage: "/start", time: "03:00", status: "new", isOnline: true, channel: "WhatsApp" },
-  { id: "2", leadNumber: "41329355", lastMessage: "Сообщение не отправлено", time: "10:57", status: "pending", channel: "Telegram" },
-  { id: "3", leadNumber: "41403183", lastMessage: "В стоимость абонемента входит...", time: "19:54", status: "qualified", channel: "WhatsApp" },
-  { id: "4", leadNumber: "41079527", lastMessage: "Давайте переведем вас к менеджеру", time: "15:43", status: "in_progress", channel: "Instagram" },
-  { id: "5", leadNumber: "41399689", lastMessage: "Yes. How can we help you?", time: "15:41", status: "new", channel: "WhatsApp" },
-  { id: "6", leadNumber: "41401137", name: "Анастасия Венская", lastMessage: "Извиняюсь забыла добавить", time: "15:41", status: "qualified", channel: "Telegram" },
-  { id: "7", leadNumber: "41324503", name: "Eve", lastMessage: "We offer for you buy membership", time: "14:44", status: "closed", channel: "Email" },
-  { id: "8", leadNumber: "41395757", name: "Parv", lastMessage: "Ok no problem. I will be there", time: "13:18", status: "qualified", channel: "WhatsApp" },
+const leadStages = [
+  { id: "NEW", name: "Новые", color: "#3B82F6", bg: "bg-blue-500" },
+  { id: "IN_PROGRESS", name: "В работе", color: "#8B5CF6", bg: "bg-purple-500" },
+  { id: "QUALIFIED", name: "Квалифицирован", color: "#F59E0B", bg: "bg-amber-500" },
+  { id: "CONVERTED", name: "Конвертирован", color: "#10B981", bg: "bg-emerald-500" },
 ];
 
-const messages: Message[] = [
-  { id: "1", text: "Poliza :3", time: "03:00", sender: "lead" },
-  { id: "2", text: "/start", time: "03:00", sender: "lead" },
-];
-
-const statusMap: Record<string, { label: string; color: string }> = {
-  new: { label: "Новый", color: "bg-blue-100 text-blue-700" },
-  pending: { label: "Ожидание", color: "bg-yellow-100 text-yellow-700" },
-  in_progress: { label: "В работе", color: "bg-purple-100 text-purple-700" },
-  qualified: { label: "Квалифицирован", color: "bg-green-100 text-green-700" },
-  closed: { label: "Закрыт", color: "bg-gray-100 text-gray-600" },
+const sourceConfig: Record<string, { icon: any; color: string; bg: string; label: string }> = {
+  website: { icon: Globe, color: "text-blue-400", bg: "bg-blue-500/20", label: "Сайт" },
+  call: { icon: Phone, color: "text-green-400", bg: "bg-green-500/20", label: "Звонок" },
+  email: { icon: Mail, color: "text-purple-400", bg: "bg-purple-500/20", label: "Email" },
+  social: { icon: Instagram, color: "text-pink-400", bg: "bg-pink-500/20", label: "Соцсети" },
+  telegram: { icon: MessageSquare, color: "text-sky-400", bg: "bg-sky-500/20", label: "Telegram" },
 };
+
+const responsibleUsers = [
+  { id: "1", name: "Алексей И.", avatar: "А" },
+  { id: "2", name: "Мария П.", avatar: "М" },
+  { id: "3", name: "Дмитрий К.", avatar: "Д" },
+];
 
 export default function LeadsPage() {
-  const [selectedLead, setSelectedLead] = useState<Lead>(leads[0]);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [message, setMessage] = useState("");
+  const [viewMode, setViewMode] = useState<"kanban" | "list">("list");
+  const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
+  const [sortField, setSortField] = useState<string>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Modal states
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Delete confirmation states
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingLead, setDeletingLead] = useState<Lead | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null);
+        setOpenSubmenu(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    fetchLeads();
+  }, []);
+
+  const fetchLeads = async () => {
+    try {
+      setLoading(true);
+      const res = await leadsApi.getAll();
+      const leadsData = res.data.items || res.data;
+      setLeads(leadsData);
+    } catch (err) {
+      console.error("Failed to fetch leads:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateLead = () => {
+    setEditingLead(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditLead = (lead: Lead) => {
+    setEditingLead(lead);
+    setIsModalOpen(true);
+    setOpenDropdown(null);
+  };
+
+  const handleSaveLead = async (leadData: any) => {
+    setIsSaving(true);
+    try {
+      if (editingLead?.id) {
+        // Update existing lead
+        await leadsApi.update(editingLead.id, leadData);
+        setLeads(leads.map(l => l.id === editingLead.id ? { ...l, ...leadData } : l));
+      } else {
+        // Create new lead
+        const newLead: Lead = {
+          ...leadData,
+          id: `lead-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+        };
+        // For mock mode, add to local state
+        setLeads([newLead, ...leads]);
+      }
+      setIsModalOpen(false);
+      setEditingLead(null);
+    } catch (err) {
+      console.error("Failed to save lead:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteClick = (lead: Lead) => {
+    setDeletingLead(lead);
+    setIsDeleteDialogOpen(true);
+    setOpenDropdown(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingLead) return;
+
+    setIsDeleting(true);
+    try {
+      await leadsApi.delete(deletingLead.id);
+      setLeads(leads.filter(l => l.id !== deletingLead.id));
+      setSelectedLeads(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(deletingLead.id);
+        return newSet;
+      });
+      setIsDeleteDialogOpen(false);
+      setDeletingLead(null);
+    } catch (err) {
+      console.error("Failed to delete lead:", err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedLeads.size === 0) return;
+
+    setIsDeleting(true);
+    try {
+      // Delete all selected leads
+      await Promise.all(Array.from(selectedLeads).map(id => leadsApi.delete(id)));
+      setLeads(leads.filter(l => !selectedLeads.has(l.id)));
+      setSelectedLeads(new Set());
+    } catch (err) {
+      console.error("Failed to delete leads:", err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const filteredLeads = leads.filter(
     (lead) =>
-      lead.leadNumber.includes(searchQuery) ||
-      lead.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lead.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
+      lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      lead.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      lead.phone?.includes(searchQuery)
   );
 
-  const status = statusMap[selectedLead?.status || "new"];
+  const getLeadsForStage = (stageId: string) => {
+    return filteredLeads.filter((lead) => lead.status === stageId);
+  };
+
+  const getSource = (source: string) => sourceConfig[source] || sourceConfig.website;
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("ru-RU", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedLeads.size === filteredLeads.length) {
+      setSelectedLeads(new Set());
+    } else {
+      setSelectedLeads(new Set(filteredLeads.map(l => l.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSelected = new Set(selectedLeads);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedLeads(newSelected);
+  };
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
+  };
+
+  const totalLeads = leads.length;
+  const newLeads = leads.filter((l) => l.status === "NEW").length;
+  const convertedLeads = leads.filter((l) => l.status === "CONVERTED").length;
+  const conversionRate = totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
+
+  const isAllSelected = filteredLeads.length > 0 && selectedLeads.size === filteredLeads.length;
+  const isSomeSelected = selectedLeads.size > 0 && selectedLeads.size < filteredLeads.length;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full min-h-full">
+        <Loader2 className="w-8 h-8 text-violet-500" />
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-full gap-4 p-4">
-      {/* Список лидов */}
-      <div className="w-80 bg-white rounded-xl shadow-sm flex flex-col">
-        <div className="p-4 border-b border-gray-100">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-gray-900">Лиды</h2>
-            <span className="text-sm text-gray-500">{leads.length}</span>
+    <div className="h-full min-h-full flex flex-col">
+      {/* Header */}
+      <div className="px-6 py-4 glass-card border-b border-white/5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-8">
+            <h1 className="text-2xl font-bold text-white">Лиды</h1>
+
+            {/* Stats Pills */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg">
+                <span className="text-sm text-gray-400">Всего</span>
+                <span className="text-sm font-bold text-white">{totalLeads}</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-violet-500/20 rounded-lg">
+                <div className="w-2 h-2 rounded-full bg-violet-500" />
+                <span className="text-sm text-violet-300">Новых</span>
+                <span className="text-sm font-bold text-violet-300">{newLeads}</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 rounded-lg">
+                <span className="text-sm text-emerald-300">Конверсия</span>
+                <span className="text-sm font-bold text-emerald-300">{conversionRate}%</span>
+              </div>
+            </div>
           </div>
 
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-            <input
-              type="text"
-              placeholder="Поиск..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 rounded-lg border border-gray-200 focus:border-gray-300 focus:ring-0 placeholder:text-gray-400"
-            />
-          </div>
+          <div className="flex items-center gap-3">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Поиск лидов..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-72 pl-10 pr-4 py-2.5 bg-white/5 rounded-xl text-sm border border-white/10 text-white placeholder-gray-500 focus:ring-2 focus:ring-violet-500 focus:bg-white/10"
+              />
+            </div>
 
-          <div className="flex gap-2 mt-3">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-              <Filter size={12} />
-              Фильтр
-            </button>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-              Статус
-              <ChevronDown size={12} />
+            {/* View Toggle */}
+            <div className="flex bg-white/5 rounded-xl p-1">
+              <button
+                onClick={() => setViewMode("kanban")}
+                className={`p-2.5 rounded-lg ${
+                  viewMode === "kanban"
+                    ? "bg-white/10 shadow-sm text-white"
+                    : "text-gray-400 hover:text-gray-300"
+                }`}
+              >
+                <LayoutGrid className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`p-2.5 rounded-lg ${
+                  viewMode === "list"
+                    ? "bg-white/10 shadow-sm text-white"
+                    : "text-gray-400 hover:text-gray-300"
+                }`}
+              >
+                <List className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Add Button */}
+            <button
+              onClick={handleCreateLead}
+              className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 text-white rounded-xl text-sm font-semibold hover:bg-purple-500 shadow-sm"
+            >
+              <Plus className="w-5 h-5" />
+              Новый лид
             </button>
           </div>
         </div>
+      </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {filteredLeads.map((lead) => {
-            const leadStatus = statusMap[lead.status];
-            return (
-              <button
-                key={lead.id}
-                onClick={() => setSelectedLead(lead)}
-                className={cn(
-                  "w-full px-4 py-3.5 text-left transition-colors border-b border-gray-50",
-                  selectedLead?.id === lead.id
-                    ? "bg-gray-900"
-                    : "hover:bg-gray-50"
-                )}
-              >
-                <div className="flex gap-3">
-                  <div className="relative flex-shrink-0">
-                    <div className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold",
-                      selectedLead?.id === lead.id
-                        ? "bg-gray-700 text-white"
-                        : "bg-gray-100 text-gray-600"
-                    )}>
-                      {lead.name?.[0]?.toUpperCase() || "#"}
+      {/* Content */}
+      <div className="flex-1 overflow-hidden">
+        {viewMode === "kanban" ? (
+          /* Kanban View */
+          <div className="flex gap-5 h-full overflow-x-auto p-6 pb-4">
+            {leadStages.map((stage) => {
+              const stageLeads = getLeadsForStage(stage.id);
+
+              return (
+                <div
+                  key={stage.id}
+                  className="flex-shrink-0 w-[320px] flex flex-col glass-card rounded-2xl"
+                >
+                  {/* Stage Header */}
+                  <div className="p-4 border-b border-white/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-4 h-4 rounded-full ${stage.bg}`} />
+                        <span className="font-bold text-white">{stage.name}</span>
+                        <span className="px-2.5 py-1 bg-white/10 text-gray-300 text-sm font-semibold rounded-lg">
+                          {stageLeads.length}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setEditingLead(null);
+                          setIsModalOpen(true);
+                        }}
+                        className="p-2 hover:bg-white/5 rounded-lg"
+                      >
+                        <Plus className="w-5 h-5 text-gray-400" />
+                      </button>
                     </div>
-                    {lead.isOnline && (
-                      <div className={cn(
-                        "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2",
-                        selectedLead?.id === lead.id
-                          ? "bg-green-400 border-gray-900"
-                          : "bg-green-500 border-white"
-                      )} />
+                  </div>
+
+                  {/* Leads */}
+                  <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                    {stageLeads.map((lead) => {
+                      const source = getSource(lead.source);
+                      const SourceIcon = source.icon;
+                      const responsible = responsibleUsers[Math.floor(Math.random() * responsibleUsers.length)];
+
+                      return (
+                        <div
+                          key={lead.id}
+                          onClick={() => handleEditLead(lead)}
+                          className="glass-card rounded-xl p-4 border border-white/5 hover:border-violet-500/30 hover:shadow-lg cursor-pointer group"
+                        >
+                          {/* Source Badge */}
+                          <div className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-lg ${source.bg} mb-3`}>
+                            <SourceIcon className={`w-4 h-4 ${source.color}`} />
+                            <span className={`text-xs font-semibold ${source.color}`}>{source.label}</span>
+                          </div>
+
+                          {/* Lead Title */}
+                          <h4 className="font-semibold text-white text-[15px] leading-snug mb-3">
+                            {lead.name}
+                          </h4>
+
+                          {/* Contact Info */}
+                          <div className="space-y-2 mb-4">
+                            {lead.email && (
+                              <div className="flex items-center gap-2">
+                                <Mail className="w-4 h-4 text-gray-400" />
+                                <span className="text-sm text-gray-300">{lead.email}</span>
+                              </div>
+                            )}
+                            {lead.phone && (
+                              <div className="flex items-center gap-2">
+                                <Phone className="w-4 h-4 text-gray-400" />
+                                <span className="text-sm text-gray-300 font-medium">{lead.phone}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Footer */}
+                          <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-violet-500 flex items-center justify-center text-white text-xs font-semibold">
+                                {responsible.avatar}
+                              </div>
+                              <span className="text-xs text-gray-400">{formatDate(lead.createdAt)}</span>
+                            </div>
+                            <button className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-violet-400 bg-violet-500/20 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-violet-500/30">
+                              <ArrowRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {stageLeads.length === 0 && (
+                      <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                        <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
+                          <Zap className="w-6 h-6" />
+                        </div>
+                        <span className="text-sm">Нет лидов</span>
+                      </div>
                     )}
                   </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* List View */
+          <div className="h-full flex flex-col">
+            {/* Table Header */}
+            <div className="glass-card border-b border-white/5 sticky top-0 z-10">
+              <div className="flex items-center h-12 text-sm">
+                {/* Checkbox */}
+                <div className="w-12 flex items-center justify-center">
+                  <button
+                    onClick={toggleSelectAll}
+                    className="p-1 hover:bg-white/5 rounded"
+                  >
+                    {isAllSelected ? (
+                      <CheckSquare className="w-5 h-5 text-violet-500" />
+                    ) : isSomeSelected ? (
+                      <Minus className="w-5 h-5 text-violet-500" />
+                    ) : (
+                      <Square className="w-5 h-5 text-gray-400" />
+                    )}
+                  </button>
+                </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className={cn(
-                        "font-medium truncate",
-                        selectedLead?.id === lead.id ? "text-white" : "text-gray-900"
-                      )}>
-                        {lead.name || `#${lead.leadNumber}`}
-                      </span>
-                      <span className={cn(
-                        "text-xs flex-shrink-0 ml-2",
-                        selectedLead?.id === lead.id ? "text-gray-400" : "text-gray-500"
-                      )}>
-                        {lead.time}
+                {/* Burger menu header */}
+                <div className="w-10 flex items-center justify-center border-r border-white/5">
+                  <MoreHorizontal className="w-4 h-4 text-gray-500" />
+                </div>
+
+                {/* Columns */}
+                <button
+                  onClick={() => handleSort("name")}
+                  className="flex-1 min-w-[200px] flex items-center gap-2 px-4 h-full hover:bg-white/5 text-left"
+                >
+                  <span className="font-semibold text-gray-300">Лид</span>
+                  {sortField === "name" && (
+                    sortOrder === "asc" ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />
+                  )}
+                </button>
+
+                <button
+                  onClick={() => handleSort("status")}
+                  className="w-[160px] flex items-center gap-2 px-4 h-full hover:bg-white/5 border-l border-white/5"
+                >
+                  <span className="font-semibold text-gray-300">Статус</span>
+                  {sortField === "status" && (
+                    sortOrder === "asc" ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />
+                  )}
+                </button>
+
+                <div className="w-[120px] flex items-center px-4 h-full border-l border-white/5">
+                  <span className="font-semibold text-gray-300">Задачи</span>
+                </div>
+
+                <div className="w-[200px] flex items-center px-4 h-full border-l border-white/5">
+                  <span className="font-semibold text-gray-300">Контакт</span>
+                </div>
+
+                <button
+                  onClick={() => handleSort("source")}
+                  className="w-[140px] flex items-center gap-2 px-4 h-full hover:bg-white/5 border-l border-white/5"
+                >
+                  <span className="font-semibold text-gray-300">Источник</span>
+                </button>
+
+                <div className="w-[140px] flex items-center px-4 h-full border-l border-white/5">
+                  <span className="font-semibold text-gray-300">Ответственный</span>
+                </div>
+
+                <button
+                  onClick={() => handleSort("createdAt")}
+                  className="w-[150px] flex items-center gap-2 px-4 h-full hover:bg-white/5 border-l border-white/5"
+                >
+                  <span className="font-semibold text-gray-300">Дата создания</span>
+                  {sortField === "createdAt" && (
+                    sortOrder === "asc" ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Table Body */}
+            <div className="flex-1 overflow-auto">
+              {filteredLeads.map((lead, index) => {
+                const source = getSource(lead.source);
+                const SourceIcon = source.icon;
+                const stage = leadStages.find((s) => s.id === lead.status);
+                const isSelected = selectedLeads.has(lead.id);
+                const responsible = responsibleUsers[index % responsibleUsers.length];
+                const tasksCount = Math.floor(Math.random() * 3);
+
+                return (
+                  <div
+                    key={lead.id}
+                    className={`flex items-center min-h-[64px] border-b border-white/5 hover:bg-white/5 cursor-pointer ${
+                      isSelected ? 'bg-violet-500/10' : index % 2 === 1 ? 'bg-white/[0.02]' : ''
+                    }`}
+                  >
+                    {/* Checkbox */}
+                    <div className="w-12 flex items-center justify-center">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleSelect(lead.id); }}
+                        className="p-1 hover:bg-white/5 rounded"
+                      >
+                        {isSelected ? (
+                          <CheckSquare className="w-5 h-5 text-violet-500" />
+                        ) : (
+                          <Square className="w-5 h-5 text-gray-500 hover:text-gray-400" />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Burger menu */}
+                    <div className="w-10 flex items-center justify-center relative" ref={openDropdown === lead.id ? dropdownRef : null}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenDropdown(openDropdown === lead.id ? null : lead.id);
+                          setOpenSubmenu(null);
+                        }}
+                        className={`p-1.5 hover:bg-white/5 rounded ${openDropdown === lead.id ? 'bg-white/5' : ''}`}
+                      >
+                        <MoreHorizontal className="w-4 h-4 text-gray-400" />
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {openDropdown === lead.id && (
+                        <div className="absolute left-0 top-full mt-1 w-64 glass-card rounded-xl shadow-lg border border-white/10 py-1 z-50">
+                          <button
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
+                            onClick={() => handleEditLead(lead)}
+                          >
+                            <Eye className="w-4 h-4 text-gray-400" />
+                            Просмотреть
+                          </button>
+                          <button
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
+                            onClick={() => handleEditLead(lead)}
+                          >
+                            <Pencil className="w-4 h-4 text-gray-400" />
+                            Редактировать
+                          </button>
+                          <button
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
+                            onClick={() => { setOpenDropdown(null); }}
+                          >
+                            <Copy className="w-4 h-4 text-gray-400" />
+                            Копировать
+                          </button>
+                          <button
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10"
+                            onClick={() => handleDeleteClick(lead)}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                            Удалить
+                          </button>
+
+                          <div className="border-t border-white/5 my-1" />
+
+                          {/* Submenu: Создать на основании */}
+                          <div
+                            className="relative"
+                            onMouseEnter={() => setOpenSubmenu("create")}
+                            onMouseLeave={() => setOpenSubmenu(null)}
+                          >
+                            <button className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
+                              <div className="flex items-center gap-3 whitespace-nowrap">
+                                <FileText className="w-4 h-4 text-gray-400" />
+                                Создать на основании
+                              </div>
+                              <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
+                            </button>
+                            {openSubmenu === "create" && (
+                              <div className="absolute left-full top-0 ml-1 w-48 glass-card rounded-xl shadow-lg border border-white/10 py-1 z-50">
+                                <button className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
+                                  Сделку
+                                </button>
+                                <button className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
+                                  Контакт
+                                </button>
+                                <button className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
+                                  Компанию
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Submenu: Запланировать */}
+                          <div
+                            className="relative"
+                            onMouseEnter={() => setOpenSubmenu("schedule")}
+                            onMouseLeave={() => setOpenSubmenu(null)}
+                          >
+                            <button className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
+                              <div className="flex items-center gap-3 whitespace-nowrap">
+                                <Calendar className="w-4 h-4 text-gray-400" />
+                                Запланировать
+                              </div>
+                              <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
+                            </button>
+                            {openSubmenu === "schedule" && (
+                              <div className="absolute left-full top-0 ml-1 w-48 glass-card rounded-xl shadow-lg border border-white/10 py-1 z-50">
+                                <button className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
+                                  Звонок
+                                </button>
+                                <button className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
+                                  Встречу
+                                </button>
+                                <button className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
+                                  Задачу
+                                </button>
+                                <button className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
+                                  Email
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="border-t border-white/5 my-1" />
+
+                          <button
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
+                            onClick={() => { setOpenDropdown(null); }}
+                          >
+                            <ShoppingBag className="w-4 h-4 text-gray-400" />
+                            Маркетплейс
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Lead Name */}
+                    <div
+                      className="flex-1 min-w-[200px] px-4 py-3"
+                      onClick={() => handleEditLead(lead)}
+                    >
+                      <p className="font-semibold text-white truncate">{lead.name}</p>
+                    </div>
+
+                    {/* Status */}
+                    <div className="w-[160px] px-4">
+                      <span
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold"
+                        style={{
+                          backgroundColor: `${stage?.color}20`,
+                          color: stage?.color,
+                        }}
+                      >
+                        <div
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ backgroundColor: stage?.color }}
+                        />
+                        {stage?.name}
                       </span>
                     </div>
 
-                    <p className={cn(
-                      "text-sm truncate",
-                      selectedLead?.id === lead.id ? "text-gray-400" : "text-gray-500"
-                    )}>
-                      {lead.lastMessage}
-                    </p>
+                    {/* Tasks */}
+                    <div className="w-[120px] px-4">
+                      {tasksCount > 0 ? (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-orange-500/20 text-orange-400 rounded-md text-xs font-medium">
+                          <Clock className="w-3.5 h-3.5" />
+                          {tasksCount} задач
+                        </span>
+                      ) : (
+                        <span className="text-gray-500 text-sm">—</span>
+                      )}
+                    </div>
 
-                    <span className={cn(
-                      "inline-block mt-2 text-xs px-2 py-0.5 rounded-full font-medium",
-                      selectedLead?.id === lead.id
-                        ? "bg-gray-700 text-gray-300"
-                        : leadStatus.color
-                    )}>
-                      {leadStatus.label}
-                    </span>
+                    {/* Contact */}
+                    <div className="w-[200px] px-4">
+                      <div className="space-y-0.5">
+                        {lead.email && (
+                          <p className="text-sm text-gray-400 truncate">{lead.email}</p>
+                        )}
+                        {lead.phone && (
+                          <p className="text-sm text-white font-medium">{lead.phone}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Source */}
+                    <div className="w-[140px] px-4">
+                      <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md ${source.bg}`}>
+                        <SourceIcon className={`w-3.5 h-3.5 ${source.color}`} />
+                        <span className={`text-xs font-medium ${source.color}`}>{source.label}</span>
+                      </div>
+                    </div>
+
+                    {/* Responsible */}
+                    <div className="w-[140px] px-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white text-xs font-semibold">
+                          {responsible.avatar}
+                        </div>
+                        <span className="text-sm text-gray-300">{responsible.name}</span>
+                      </div>
+                    </div>
+
+                    {/* Date */}
+                    <div className="w-[150px] px-4">
+                      <span className="text-sm text-gray-400">{formatDate(lead.createdAt)}</span>
+                    </div>
                   </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+                );
+              })}
 
-      {/* Чат */}
-      <div className="flex-1 bg-white rounded-xl shadow-sm flex flex-col min-w-0">
-        {/* Хедер */}
-        <div className="h-16 px-5 flex items-center justify-between border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600">
-              {selectedLead?.name?.[0]?.toUpperCase() || "#"}
-            </div>
-            <div>
-              <div className="font-medium text-gray-900">
-                {selectedLead?.name || `Лид #${selectedLead?.leadNumber}`}
-              </div>
-              <div className="text-sm text-gray-500">#{selectedLead?.leadNumber}</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <Phone size={18} className="text-gray-500" />
-            </button>
-            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <Archive size={18} className="text-gray-500" />
-            </button>
-            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <MoreHorizontal size={18} className="text-gray-500" />
-            </button>
-          </div>
-        </div>
-
-        {/* Инфо-бар */}
-        <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <span>27.08.2025</span>
-            <span className="flex items-center gap-1.5">
-              <Clock size={14} />
-              3 дня без ответа
-            </span>
-          </div>
-          <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium", status.color)}>
-            {status.label}
-          </span>
-        </div>
-
-        {/* Задачи */}
-        <div className="mx-5 mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Circle size={14} className="text-gray-400" />
-            Нет запланированных задач
-          </div>
-          <button className="flex items-center gap-1 text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors">
-            <Plus size={14} />
-            Добавить
-          </button>
-        </div>
-
-        {/* Сообщения */}
-        <div className="flex-1 overflow-y-auto p-5">
-          <div className="space-y-3">
-            {messages.map((msg) => (
-              <div key={msg.id} className={cn("flex", msg.sender === "user" ? "justify-end" : "justify-start")}>
-                {msg.sender === "lead" && (
-                  <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-600 mr-2 flex-shrink-0">
-                    {selectedLead?.name?.[0]?.toUpperCase() || "#"}
+              {filteredLeads.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                    <Zap className="w-8 h-8 text-gray-400" />
                   </div>
-                )}
-                <div className={cn(
-                  "max-w-[60%] px-4 py-2.5 rounded-2xl",
-                  msg.sender === "user"
-                    ? "bg-gray-900 text-white rounded-br-md"
-                    : "bg-gray-100 text-gray-900 rounded-bl-md"
-                )}>
-                  <p className="text-sm">{msg.text}</p>
-                  <p className={cn(
-                    "text-xs mt-1",
-                    msg.sender === "user" ? "text-gray-400" : "text-gray-500"
-                  )}>
-                    {msg.time}
-                  </p>
+                  <p className="text-gray-400 font-medium">Лиды не найдены</p>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Ввод сообщения */}
-        <div className="p-4 border-t border-gray-100">
-          <div className="flex items-center gap-3">
-            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <Paperclip size={20} className="text-gray-500" />
-            </button>
-            <input
-              type="text"
-              placeholder="Написать сообщение..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              className="flex-1 px-4 py-2.5 text-sm bg-gray-50 rounded-lg border border-gray-200 focus:border-gray-300 focus:ring-0 placeholder:text-gray-400"
-            />
-            <button
-              disabled={!message.trim()}
-              className={cn(
-                "p-2.5 rounded-lg transition-colors",
-                message.trim()
-                  ? "bg-gray-900 text-white hover:bg-gray-800"
-                  : "bg-gray-100 text-gray-400"
               )}
-            >
-              <Send size={18} />
-            </button>
-          </div>
-          <div className="flex items-center justify-between mt-3 text-xs text-gray-500">
-            <span>Диалог #{selectedLead?.leadNumber}</span>
-            <div className="flex gap-3">
-              <button className="hover:text-gray-700 transition-colors">Закрыть диалог</button>
-              <span>·</span>
-              <button className="hover:text-gray-700 transition-colors">Отметить отвеченным</button>
             </div>
+
+            {/* Selected Actions Bar */}
+            {selectedLeads.size > 0 && (
+              <div className="bg-violet-500 text-white px-6 py-3 flex items-center justify-between">
+                <span className="font-medium">Выбрано: {selectedLeads.size}</span>
+                <div className="flex items-center gap-2">
+                  <button className="px-4 py-1.5 bg-white/20 rounded-lg text-sm font-medium hover:bg-white/30">
+                    Изменить статус
+                  </button>
+                  <button className="px-4 py-1.5 bg-white/20 rounded-lg text-sm font-medium hover:bg-white/30">
+                    Назначить
+                  </button>
+                  <button
+                    onClick={handleBulkDelete}
+                    disabled={isDeleting}
+                    className="px-4 py-1.5 bg-red-500 rounded-lg text-sm font-medium hover:bg-red-600 disabled:opacity-50"
+                  >
+                    {isDeleting ? "Удаление..." : "Удалить"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Правая панель */}
-      <div className="w-72 bg-white rounded-xl shadow-sm p-5">
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="font-semibold text-gray-900">Информация</h3>
-          <button className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
-            Изменить
-          </button>
-        </div>
+      {/* Lead Modal */}
+      <LeadModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingLead(null);
+        }}
+        onSave={handleSaveLead}
+        lead={editingLead}
+        isLoading={isSaving}
+      />
 
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Имя</label>
-            <p className="text-sm text-gray-900 mt-1">{selectedLead?.name || "Не указано"}</p>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">ID лида</label>
-            <p className="text-sm text-gray-900 mt-1">#{selectedLead?.leadNumber}</p>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Статус</label>
-            <div className="mt-1">
-              <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium", status.color)}>
-                {status.label}
-              </span>
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Канал</label>
-            <p className="text-sm text-gray-900 mt-1">{selectedLead?.channel || "—"}</p>
-          </div>
-        </div>
-
-        <div className="mt-6 pt-5 border-t border-gray-100">
-          <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Действия</h4>
-          <div className="space-y-1">
-            <button className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-              <CheckCircle2 size={16} />
-              Квалифицировать
-            </button>
-            <button className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-              <Plus size={16} />
-              Создать сделку
-            </button>
-            <button className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-              <Archive size={16} />
-              В архив
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => {
+          setIsDeleteDialogOpen(false);
+          setDeletingLead(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Удалить лид?"
+        description={`Вы уверены, что хотите удалить лид "${deletingLead?.name}"? Это действие нельзя отменить.`}
+        confirmText="Удалить"
+        cancelText="Отмена"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }
