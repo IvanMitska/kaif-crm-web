@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KAIF CRM - Отчет о проделанной работе</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --secondary: #8b5cf6;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --dark: #1e293b;
+      --gray: #64748b;
+      --light: #f8fafc;
+      --border: #e2e8f0;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--dark);
+      line-height: 1.6;
+      background: #fff;
+    }
+
+    .container {
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 20mm 15mm;
+    }
+
+    /* Cover Page */
+    .cover {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      padding: 40px;
+      page-break-after: always;
+    }
+
+    .cover-logo {
+      width: 120px;
+      height: 120px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      font-weight: 700;
+      margin-bottom: 40px;
+      backdrop-filter: blur(10px);
+    }
+
+    .cover h1 {
+      font-size: 56px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      letter-spacing: -1px;
+    }
+
+    .cover-subtitle {
+      font-size: 24px;
+      font-weight: 300;
+      opacity: 0.9;
+      margin-bottom: 60px;
+    }
+
+    .cover-meta {
+      margin-top: auto;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    .cover-badges {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 40px;
+    }
+
+    .badge {
+      background: rgba(255,255,255,0.2);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      backdrop-filter: blur(10px);
+    }
+
+    /* Content */
+    h2 {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--primary);
+      margin: 40px 0 20px;
+      padding-bottom: 12px;
+      border-bottom: 3px solid var(--primary);
+    }
+
+    h3 {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--dark);
+      margin: 30px 0 16px;
+    }
+
+    h4 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--gray);
+      margin: 20px 0 12px;
+    }
+
+    p {
+      margin-bottom: 16px;
+      color: var(--gray);
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 14px;
+    }
+
+    th {
+      background: var(--primary);
+      color: white;
+      padding: 14px 16px;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    th:first-child {
+      border-radius: 8px 0 0 0;
+    }
+
+    th:last-child {
+      border-radius: 0 8px 0 0;
+    }
+
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tr:nth-child(even) {
+      background: var(--light);
+    }
+
+    tr:last-child td:first-child {
+      border-radius: 0 0 0 8px;
+    }
+
+    tr:last-child td:last-child {
+      border-radius: 0 0 8px 0;
+    }
+
+    /* Cards */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .card {
+      background: var(--light);
+      border-radius: 12px;
+      padding: 24px;
+      border: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--gray);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .card-value {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: var(--gray);
+      margin-top: 8px;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .stat-card.green {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    .stat-card.orange {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      opacity: 0.9;
+      margin-top: 4px;
+    }
+
+    /* Architecture */
+    .architecture {
+      background: var(--dark);
+      color: #94a3b8;
+      border-radius: 12px;
+      padding: 24px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      overflow-x: auto;
+      margin: 20px 0;
+    }
+
+    .architecture .highlight {
+      color: #60a5fa;
+    }
+
+    .architecture .green {
+      color: #4ade80;
+    }
+
+    /* Module List */
+    .module-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .module {
+      background: white;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      transition: all 0.2s;
+    }
+
+    .module:hover {
+      border-color: var(--primary);
+    }
+
+    .module-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .module-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--primary);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 18px;
+    }
+
+    .module-name {
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .module-endpoints {
+      font-size: 12px;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .module-desc {
+      font-size: 13px;
+      color: var(--gray);
+    }
+
+    /* Status */
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status.done {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status.progress {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    /* Progress Bar */
+    .progress-container {
+      margin: 30px 0;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .progress-label {
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .progress-value {
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 24px;
+    }
+
+    .progress-bar {
+      height: 24px;
+      background: var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+      border-radius: 12px;
+      width: 85%;
+    }
+
+    /* Code */
+    .code {
+      background: var(--dark);
+      color: #e2e8f0;
+      padding: 20px;
+      border-radius: 12px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
+      margin: 16px 0;
+      overflow-x: auto;
+    }
+
+    .code .comment {
+      color: #64748b;
+    }
+
+    .code .command {
+      color: #4ade80;
+    }
+
+    /* Features List */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .feature {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      background: var(--light);
+      border-radius: 8px;
+    }
+
+    .feature-check {
+      width: 24px;
+      height: 24px;
+      background: var(--success);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .feature-text {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    /* Summary Box */
+    .summary-box {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      border-radius: 16px;
+      padding: 32px;
+      margin: 30px 0;
+    }
+
+    .summary-box h3 {
+      color: white;
+      margin-top: 0;
+      font-size: 24px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-top: 24px;
+    }
+
+    .summary-item {
+      text-align: center;
+    }
+
+    .summary-number {
+      font-size: 48px;
+      font-weight: 700;
+    }
+
+    .summary-label {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    /* Page Break */
+    .page-break {
+      page-break-before: always;
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 60px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--gray);
+      font-size: 12px;
+    }
+
+    /* Two columns */
+    .two-cols {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 30px;
+    }
+
+    /* Tech stack */
+    .tech-stack {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 16px 0;
+    }
+
+    .tech-badge {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .tech-badge.backend {
+      background: #fef2f2;
+      color: #dc2626;
+    }
+
+    .tech-badge.frontend {
+      background: #f0fdf4;
+      color: #16a34a;
+    }
+
+    .tech-badge.db {
+      background: #eff6ff;
+      color: #2563eb;
+    }
+
+    .tech-badge.infra {
+      background: #faf5ff;
+      color: #9333ea;
+    }
+
+    @media print {
+      .container {
+        padding: 15mm;
+      }
+
+      .cover {
+        min-height: auto;
+        padding: 60px 40px;
+      }
+
+      .page-break {
+        page-break-before: always;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Cover Page -->
+  <div class="cover">
+    <div class="cover-logo">K</div>
+    <h1>KAIF CRM</h1>
+    <p class="cover-subtitle">Отчет о проделанной работе</p>
+
+    <div class="cover-badges">
+      <span class="badge">NestJS</span>
+      <span class="badge">Next.js 14</span>
+      <span class="badge">PostgreSQL</span>
+      <span class="badge">Redis</span>
+      <span class="badge">Prisma</span>
+      <span class="badge">Docker</span>
+    </div>
+
+    <p class="cover-meta">
+      Система управления взаимоотношениями с клиентами<br>
+      Версия 1.0 | Февраль 2026
+    </p>
+  </div>
+
+  <!-- Content -->
+  <div class="container">
+
+    <h2>Обзор проекта</h2>
+
+    <p><strong>KAIF CRM</strong> — полнофункциональная CRM-система корпоративного уровня для управления продажами, клиентами, задачами и омниканальными коммуникациями.</p>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">11</div>
+        <div class="stat-label">Backend модулей</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-value">~91</div>
+        <div class="stat-label">API эндпоинтов</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-value">9</div>
+        <div class="stat-label">Frontend страниц</div>
+      </div>
+    </div>
+
+    <h3>Ключевые возможности</h3>
+
+    <div class="features">
+      <div class="feature">
+        <span class="feature-check">&#10003;</span>
+        <span class="feature-text">Управление контактами</span>
+      </div>
+      <div class="feature">
+        <span class="feature-check">&#10003;</span>
+        <span class="feature-text">Воронка продаж (Kanban)</span>
+      </div>
+      <div class="feature">
+        <span class="feature-check">&#10003;</span>
+        <span class="feature-text">Управление задачами</span>
+      </div>
+      <div class="feature">
+        <span class="feature-check">&#10003;</span>
+        <span class="feature-text">Омниканальность</span>
+      </div>
+      <div class="feature">
+        <span class="feature-check">&#10003;</span>
+        <span class="feature-text">Аналитика и дашборды</span>
+      </div>
+      <div class="feature">
+        <span class="feature-check">&#10003;</span>
+        <span class="feature-text">Real-time уведомления</span>
+      </div>
+      <div class="feature">
+        <span class="feature-check">&#10003;</span>
+        <span class="feature-text">JWT + 2FA аутентификация</span>
+      </div>
+      <div class="feature">
+        <span class="feature-check">&#10003;</span>
+        <span class="feature-text">Автоматизация процессов</span>
+      </div>
+    </div>
+
+    <h2>Технологический стек</h2>
+
+    <div class="two-cols">
+      <div>
+        <h4>Backend</h4>
+        <div class="tech-stack">
+          <span class="tech-badge backend">NestJS 10.3</span>
+          <span class="tech-badge backend">Express.js</span>
+          <span class="tech-badge backend">GraphQL</span>
+          <span class="tech-badge backend">Socket.io</span>
+          <span class="tech-badge backend">Bull</span>
+          <span class="tech-badge backend">Swagger</span>
+        </div>
+      </div>
+      <div>
+        <h4>Frontend</h4>
+        <div class="tech-stack">
+          <span class="tech-badge frontend">Next.js 14</span>
+          <span class="tech-badge frontend">React</span>
+          <span class="tech-badge frontend">Tailwind CSS</span>
+          <span class="tech-badge frontend">shadcn/ui</span>
+          <span class="tech-badge frontend">Zustand</span>
+          <span class="tech-badge frontend">React Query</span>
+        </div>
+      </div>
+      <div>
+        <h4>База данных</h4>
+        <div class="tech-stack">
+          <span class="tech-badge db">PostgreSQL 15</span>
+          <span class="tech-badge db">Prisma ORM</span>
+          <span class="tech-badge db">Redis 7</span>
+        </div>
+      </div>
+      <div>
+        <h4>Инфраструктура</h4>
+        <div class="tech-stack">
+          <span class="tech-badge infra">Docker</span>
+          <span class="tech-badge infra">Nginx</span>
+          <span class="tech-badge infra">MinIO</span>
+          <span class="tech-badge infra">Turbo</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <h2>Backend модули</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Модуль</th>
+          <th>Статус</th>
+          <th>Эндпоинты</th>
+          <th>Описание</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Auth</strong></td>
+          <td><span class="status done">&#10003; Готово</span></td>
+          <td>8</td>
+          <td>JWT, refresh tokens, 2FA, RBAC</td>
+        </tr>
+        <tr>
+          <td><strong>Contacts</strong></td>
+          <td><span class="status done">&#10003; Готово</span></td>
+          <td>11</td>
+          <td>CRUD, дедупликация, импорт/экспорт</td>
+        </tr>
+        <tr>
+          <td><strong>Companies</strong></td>
+          <td><span class="status done">&#10003; Готово</span></td>
+          <td>11</td>
+          <td>CRUD, ИНН/КПП, слияние компаний</td>
+        </tr>
+        <tr>
+          <td><strong>Deals</strong></td>
+          <td><span class="status done">&#10003; Готово</span></td>
+          <td>13</td>
+          <td>Воронка, этапы, товарные позиции</td>
+        </tr>
+        <tr>
+          <td><strong>Tasks</strong></td>
+          <td><span class="status done">&#10003; Готово</span></td>
+          <td>9</td>
+          <td>Статусы, приоритеты, повторения</td>
+        </tr>
+        <tr>
+          <td><strong>Messages</strong></td>
+          <td><span class="status done">&#10003; Готово</span></td>
+          <td>6</td>
+          <td>Email, WhatsApp, Telegram, VK</td>
+        </tr>
+        <tr>
+          <td><strong>Analytics</strong></td>
+          <td><span class="status done">&#10003; Готово</span></td>
+          <td>5</td>
+          <td>KPI, воронки, отчеты</td>
+        </tr>
+        <tr>
+          <td><strong>Users</strong></td>
+          <td><span class="status done">&#10003; Готово</span></td>
+          <td>8</td>
+          <td>Роли, команды, активность</td>
+        </tr>
+        <tr>
+          <td><strong>Notifications</strong></td>
+          <td><span class="status done">&#10003; Готово</span></td>
+          <td>6</td>
+          <td>In-app уведомления</td>
+        </tr>
+        <tr>
+          <td><strong>Automation</strong></td>
+          <td><span class="status done">&#10003; Готово</span></td>
+          <td>5</td>
+          <td>Триггеры, условия, действия</td>
+        </tr>
+        <tr>
+          <td><strong>WebSockets</strong></td>
+          <td><span class="status done">&#10003; Готово</span></td>
+          <td>10+</td>
+          <td>Real-time события</td>
+        </tr>
+        <tr>
+          <td><strong>Pipelines</strong></td>
+          <td><span class="status done">&#10003; Готово</span></td>
+          <td>9</td>
+          <td>Воронки и этапы продаж</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Frontend страницы</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Страница</th>
+          <th>Путь</th>
+          <th>Функционал</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Вход</strong></td>
+          <td>/login</td>
+          <td>Аутентификация с поддержкой 2FA</td>
+        </tr>
+        <tr>
+          <td><strong>Дашборд</strong></td>
+          <td>/dashboard</td>
+          <td>KPI, метрики, быстрые действия</td>
+        </tr>
+        <tr>
+          <td><strong>Контакты</strong></td>
+          <td>/contacts</td>
+          <td>Список, поиск, фильтрация</td>
+        </tr>
+        <tr>
+          <td><strong>Компании</strong></td>
+          <td>/companies</td>
+          <td>Управление компаниями</td>
+        </tr>
+        <tr>
+          <td><strong>Сделки</strong></td>
+          <td>/deals</td>
+          <td>Kanban-доска, drag-n-drop</td>
+        </tr>
+        <tr>
+          <td><strong>Задачи</strong></td>
+          <td>/tasks</td>
+          <td>Список, Kanban, календарь</td>
+        </tr>
+        <tr>
+          <td><strong>Сообщения</strong></td>
+          <td>/messages</td>
+          <td>Омниканальные коммуникации</td>
+        </tr>
+        <tr>
+          <td><strong>Аналитика</strong></td>
+          <td>/analytics</td>
+          <td>Графики, воронки, отчеты</td>
+        </tr>
+        <tr>
+          <td><strong>Настройки</strong></td>
+          <td>/settings</td>
+          <td>Профиль, параметры</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="page-break"></div>
+
+    <h2>База данных</h2>
+
+    <h3>Модели Prisma</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Модель</th>
+          <th>Ключевые поля</th>
+          <th>Связи</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>User</strong></td>
+          <td>email, password, role, 2fa</td>
+          <td>Teams, Contacts, Deals, Tasks</td>
+        </tr>
+        <tr>
+          <td><strong>Contact</strong></td>
+          <td>name, email, phone, source</td>
+          <td>Company, Messages, Deals</td>
+        </tr>
+        <tr>
+          <td><strong>Company</strong></td>
+          <td>name, inn, kpp, industry</td>
+          <td>Contacts, Deals</td>
+        </tr>
+        <tr>
+          <td><strong>Pipeline</strong></td>
+          <td>name, isDefault</td>
+          <td>Stages</td>
+        </tr>
+        <tr>
+          <td><strong>Stage</strong></td>
+          <td>name, order, color</td>
+          <td>Pipeline, Deals</td>
+        </tr>
+        <tr>
+          <td><strong>Deal</strong></td>
+          <td>title, amount, probability</td>
+          <td>Contact, Company, Products</td>
+        </tr>
+        <tr>
+          <td><strong>Task</strong></td>
+          <td>title, status, priority, dueDate</td>
+          <td>Assignee, Contact, Deal</td>
+        </tr>
+        <tr>
+          <td><strong>Message</strong></td>
+          <td>content, channel, direction</td>
+          <td>Contact, User</td>
+        </tr>
+        <tr>
+          <td><strong>Notification</strong></td>
+          <td>title, type, isRead</td>
+          <td>User</td>
+        </tr>
+        <tr>
+          <td><strong>Automation</strong></td>
+          <td>name, triggers, actions</td>
+          <td>User</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Безопасность</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Уровень</th>
+          <th>Механизм</th>
+          <th>Статус</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Аутентификация</td>
+          <td>JWT Access + Refresh Tokens</td>
+          <td><span class="status done">&#10003; Реализовано</span></td>
+        </tr>
+        <tr>
+          <td>Двухфакторная</td>
+          <td>TOTP (Google Authenticator)</td>
+          <td><span class="status done">&#10003; Реализовано</span></td>
+        </tr>
+        <tr>
+          <td>Авторизация</td>
+          <td>Role-Based Access Control</td>
+          <td><span class="status done">&#10003; Реализовано</span></td>
+        </tr>
+        <tr>
+          <td>Пароли</td>
+          <td>Argon2 хеширование</td>
+          <td><span class="status done">&#10003; Реализовано</span></td>
+        </tr>
+        <tr>
+          <td>HTTP</td>
+          <td>Helmet security headers</td>
+          <td><span class="status done">&#10003; Реализовано</span></td>
+        </tr>
+        <tr>
+          <td>Rate Limiting</td>
+          <td>100 запросов / 60 сек</td>
+          <td><span class="status done">&#10003; Реализовано</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="page-break"></div>
+
+    <h2>Инфраструктура Docker</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Сервис</th>
+          <th>Образ</th>
+          <th>Порты</th>
+          <th>Назначение</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>postgres</strong></td>
+          <td>postgres:15</td>
+          <td>5434</td>
+          <td>База данных</td>
+        </tr>
+        <tr>
+          <td><strong>redis</strong></td>
+          <td>redis:7</td>
+          <td>6379</td>
+          <td>Кеширование, очереди</td>
+        </tr>
+        <tr>
+          <td><strong>minio</strong></td>
+          <td>minio/minio</td>
+          <td>9000, 9001</td>
+          <td>Хранилище файлов</td>
+        </tr>
+        <tr>
+          <td><strong>backend</strong></td>
+          <td>node:20</td>
+          <td>3001</td>
+          <td>API сервер</td>
+        </tr>
+        <tr>
+          <td><strong>frontend</strong></td>
+          <td>node:20</td>
+          <td>3000</td>
+          <td>Web приложение</td>
+        </tr>
+        <tr>
+          <td><strong>nginx</strong></td>
+          <td>nginx:alpine</td>
+          <td>80, 443</td>
+          <td>Reverse proxy</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Команды разработки</h3>
+
+    <div class="code">
+      <span class="comment"># Запуск</span><br>
+      <span class="command">pnpm dev</span>              <span class="comment"># Все сервисы</span><br>
+      <span class="command">pnpm backend:dev</span>      <span class="comment"># Только backend</span><br>
+      <span class="command">pnpm frontend:dev</span>     <span class="comment"># Только frontend</span><br><br>
+      <span class="comment"># Docker</span><br>
+      <span class="command">pnpm docker:up</span>        <span class="comment"># Поднять контейнеры</span><br>
+      <span class="command">pnpm docker:down</span>      <span class="comment"># Остановить</span><br><br>
+      <span class="comment"># База данных</span><br>
+      <span class="command">pnpm db:migrate</span>       <span class="comment"># Миграции</span><br>
+      <span class="command">pnpm db:seed</span>          <span class="comment"># Сидирование</span>
+    </div>
+
+    <div class="page-break"></div>
+
+    <h2>Итоги</h2>
+
+    <div class="summary-box">
+      <h3>Статистика проекта</h3>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="summary-number">11</div>
+          <div class="summary-label">Backend модулей</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-number">~91</div>
+          <div class="summary-label">API эндпоинтов</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-number">14</div>
+          <div class="summary-label">Моделей БД</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="progress-container">
+      <div class="progress-header">
+        <span class="progress-label">Готовность проекта</span>
+        <span class="progress-value">85%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill"></div>
+      </div>
+    </div>
+
+    <h3>Рекомендации по дальнейшей работе</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Задача</th>
+          <th>Приоритет</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>Завершить интеграцию Tasks с API</td>
+          <td><span class="status done" style="background:#fef2f2;color:#dc2626;">Высокий</span></td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>Реализовать страницу регистрации</td>
+          <td><span class="status done" style="background:#fef2f2;color:#dc2626;">Высокий</span></td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>Добавить восстановление пароля</td>
+          <td><span class="status progress">Средний</span></td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>Настроить CI/CD pipeline</td>
+          <td><span class="status progress">Средний</span></td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>Написать Unit и E2E тесты</td>
+          <td><span class="status progress">Средний</span></td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td>Production deployment</td>
+          <td><span class="status done" style="background:#f0fdf4;color:#16a34a;">Низкий</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="footer">
+      <p><strong>KAIF CRM</strong> — Современная CRM-система</p>
+      <p>Отчет сгенерирован: 18 февраля 2026</p>
+    </div>
+
+  </div>
+
+</body>
+</html>
