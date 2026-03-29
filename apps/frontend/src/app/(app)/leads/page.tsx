@@ -265,13 +265,13 @@ export default function LeadsPage() {
   return (
     <div className="h-full min-h-full flex flex-col">
       {/* Header */}
-      <div className="px-6 py-4 glass-card border-b border-white/5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <h1 className="text-2xl font-bold text-white">Лиды</h1>
+      <div className="px-4 sm:px-6 py-4 glass-card border-b border-white/5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8">
+            <h1 className="text-xl sm:text-2xl font-bold text-white">Лиды</h1>
 
-            {/* Stats Pills */}
-            <div className="flex items-center gap-3">
+            {/* Stats Pills - hidden on mobile */}
+            <div className="hidden lg:flex items-center gap-3">
               <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg">
                 <span className="text-sm text-gray-400">Всего</span>
                 <span className="text-sm font-bold text-white">{totalLeads}</span>
@@ -288,21 +288,21 @@ export default function LeadsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
             {/* Search */}
-            <div className="relative">
+            <div className="relative flex-1 sm:flex-none">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Поиск лидов..."
+                placeholder="Поиск..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-72 pl-10 pr-4 py-2.5 bg-white/5 rounded-xl text-sm border border-white/10 text-white placeholder-gray-500 focus:ring-2 focus:ring-violet-500 focus:bg-white/10"
+                className="w-full sm:w-48 lg:w-72 pl-10 pr-4 py-2.5 bg-white/5 rounded-xl text-sm border border-white/10 text-white placeholder-gray-500 focus:ring-2 focus:ring-violet-500 focus:bg-white/10"
               />
             </div>
 
-            {/* View Toggle */}
-            <div className="flex bg-white/5 rounded-xl p-1">
+            {/* View Toggle - hidden on small mobile */}
+            <div className="hidden sm:flex bg-white/5 rounded-xl p-1">
               <button
                 onClick={() => setViewMode("kanban")}
                 className={`p-2.5 rounded-lg ${
@@ -328,10 +328,10 @@ export default function LeadsPage() {
             {/* Add Button */}
             <button
               onClick={handleCreateLead}
-              className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 text-white rounded-xl text-sm font-semibold hover:bg-purple-500 shadow-sm"
+              className="flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-violet-500 text-white rounded-xl text-sm font-semibold hover:bg-purple-500 shadow-sm"
             >
               <Plus className="w-5 h-5" />
-              Новый лид
+              <span className="hidden sm:inline">Новый лид</span>
             </button>
           </div>
         </div>
@@ -341,14 +341,14 @@ export default function LeadsPage() {
       <div className="flex-1 overflow-hidden">
         {viewMode === "kanban" ? (
           /* Kanban View */
-          <div className="flex gap-5 h-full overflow-x-auto p-6 pb-4">
+          <div className="flex gap-3 sm:gap-5 h-full overflow-x-auto p-4 sm:p-6 pb-4 snap-x snap-mandatory">
             {leadStages.map((stage) => {
               const stageLeads = getLeadsForStage(stage.id);
 
               return (
                 <div
                   key={stage.id}
-                  className="flex-shrink-0 w-[320px] flex flex-col glass-card rounded-2xl"
+                  className="flex-shrink-0 w-[280px] sm:w-[300px] md:w-[320px] flex flex-col glass-card rounded-2xl snap-start"
                 >
                   {/* Stage Header */}
                   <div className="p-4 border-b border-white/5">
@@ -445,8 +445,8 @@ export default function LeadsPage() {
           /* List View */
           <div className="h-full flex flex-col">
             {/* Table Header */}
-            <div className="glass-card border-b border-white/5 sticky top-0 z-10">
-              <div className="flex items-center h-12 text-sm">
+            <div className="glass-card border-b border-white/5 sticky top-0 z-10 overflow-x-auto">
+              <div className="flex items-center h-12 text-sm min-w-[1100px]">
                 {/* Checkbox */}
                 <div className="w-12 flex items-center justify-center">
                   <button
@@ -521,7 +521,8 @@ export default function LeadsPage() {
             </div>
 
             {/* Table Body */}
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 overflow-x-auto overflow-y-auto">
+              <div className="min-w-[1100px]">
               {filteredLeads.map((lead, index) => {
                 const source = getSource(lead.source);
                 const SourceIcon = source.icon;
@@ -753,25 +754,26 @@ export default function LeadsPage() {
                   <p className="text-gray-400 font-medium">Лиды не найдены</p>
                 </div>
               )}
+              </div>
             </div>
 
             {/* Selected Actions Bar */}
             {selectedLeads.size > 0 && (
-              <div className="bg-violet-500 text-white px-6 py-3 flex items-center justify-between">
-                <span className="font-medium">Выбрано: {selectedLeads.size}</span>
-                <div className="flex items-center gap-2">
-                  <button className="px-4 py-1.5 bg-white/20 rounded-lg text-sm font-medium hover:bg-white/30">
+              <div className="bg-violet-500 text-white px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+                <span className="font-medium text-sm sm:text-base whitespace-nowrap">Выбрано: {selectedLeads.size}</span>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <button className="hidden sm:block px-4 py-1.5 bg-white/20 rounded-lg text-sm font-medium hover:bg-white/30">
                     Изменить статус
                   </button>
-                  <button className="px-4 py-1.5 bg-white/20 rounded-lg text-sm font-medium hover:bg-white/30">
+                  <button className="hidden sm:block px-4 py-1.5 bg-white/20 rounded-lg text-sm font-medium hover:bg-white/30">
                     Назначить
                   </button>
                   <button
                     onClick={handleBulkDelete}
                     disabled={isDeleting}
-                    className="px-4 py-1.5 bg-red-500 rounded-lg text-sm font-medium hover:bg-red-600 disabled:opacity-50"
+                    className="px-3 sm:px-4 py-1.5 bg-red-500 rounded-lg text-sm font-medium hover:bg-red-600 disabled:opacity-50"
                   >
-                    {isDeleting ? "Удаление..." : "Удалить"}
+                    {isDeleting ? "..." : "Удалить"}
                   </button>
                 </div>
               </div>

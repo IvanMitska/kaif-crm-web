@@ -145,7 +145,7 @@ export default function AppLayout({
         className={cn(
           "fixed md:relative inset-y-0 left-0 z-50 flex flex-col glass-sidebar",
           isMobile
-            ? (sidebarOpen ? "translate-x-0 w-72" : "-translate-x-full w-72")
+            ? (sidebarOpen ? "translate-x-0 w-[85vw] max-w-72" : "-translate-x-full w-[85vw] max-w-72")
             : (sidebarOpen ? "w-64" : "w-[72px]"),
           "md:translate-x-0"
         )}
@@ -302,8 +302,8 @@ export default function AppLayout({
             </button>
 
             {/* Search */}
-            <div className="flex items-center gap-4 flex-1 min-w-0">
-              <div className="relative flex-1 max-w-lg">
+            <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+              <div className="relative flex-1 max-w-lg hidden sm:block">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                 <input
                   type="search"
@@ -318,6 +318,10 @@ export default function AppLayout({
                   }}
                 />
               </div>
+              {/* Mobile search button */}
+              <button className="p-2.5 rounded-xl hover:bg-white/10 sm:hidden">
+                <Search size={20} className="text-gray-400" />
+              </button>
             </div>
 
             {/* Right side */}

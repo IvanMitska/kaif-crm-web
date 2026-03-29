@@ -145,7 +145,7 @@ export function ContactModal({ isOpen, onClose, onSave, contact, isLoading }: Co
 
       {/* Modal */}
       <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-        <div className="bg-[#0d0d14] rounded-3xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-hidden border border-white/10">
+        <div className="bg-[#0d0d14] rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-[95vw] sm:max-w-xl max-h-[90vh] overflow-hidden border border-white/10">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
             <h2 className="text-xl font-bold text-white">
@@ -162,7 +162,7 @@ export function ContactModal({ isOpen, onClose, onSave, contact, isLoading }: Co
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-140px)]">
             {/* Name row */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">
                   Имя <span className="text-red-500">*</span>
@@ -201,7 +201,7 @@ export function ContactModal({ isOpen, onClose, onSave, contact, isLoading }: Co
             </div>
 
             {/* Company & Position */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">
                   Компания
@@ -235,7 +235,7 @@ export function ContactModal({ isOpen, onClose, onSave, contact, isLoading }: Co
             </div>
 
             {/* Email & Phone */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">
                   Email

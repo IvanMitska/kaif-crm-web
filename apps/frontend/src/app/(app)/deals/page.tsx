@@ -272,8 +272,8 @@ function KanbanColumn({
 
   return (
     <div className={cn(
-      "flex-shrink-0 glass-card rounded-3xl",
-      isCollapsed ? "w-16" : "w-[340px]"
+      "flex-shrink-0 glass-card rounded-2xl sm:rounded-3xl snap-start",
+      isCollapsed ? "w-16" : "w-[280px] sm:w-[320px] md:w-[340px]"
     )}>
       {/* Column Header */}
       <div className="p-4 border-b border-white/5">
@@ -412,7 +412,7 @@ function DealDetailModal({
       />
 
       {/* Modal */}
-      <div className="fixed right-0 top-0 bottom-0 w-full max-w-2xl glass-card z-[70] overflow-hidden flex flex-col border-l border-white/10">
+      <div className="fixed inset-0 sm:inset-auto sm:right-0 sm:top-0 sm:bottom-0 w-full sm:max-w-xl md:max-w-2xl glass-card z-[70] overflow-hidden flex flex-col sm:border-l border-white/10">
         {/* Header */}
         <div className="p-6 border-b border-white/10">
           <div className="flex items-start justify-between gap-4">
@@ -881,50 +881,50 @@ export default function DealsPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="glass-card rounded-3xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 rounded-2xl bg-violet-500/20 flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-violet-400" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-violet-500/20 flex items-center justify-center">
+                <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-violet-400" />
               </div>
-              <ArrowUpRight className="w-4 h-4 text-green-500" />
+              <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
             </div>
-            <p className="text-3xl font-bold text-white">{deals.length}</p>
-            <p className="text-gray-400 text-sm mt-1">Всего сделок</p>
+            <p className="text-2xl sm:text-3xl font-bold text-white">{deals.length}</p>
+            <p className="text-gray-400 text-xs sm:text-sm mt-1">Всего сделок</p>
           </div>
 
-          <div className="glass-card rounded-3xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 rounded-2xl bg-green-500/20 flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-green-400" />
+          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-green-500/20 flex items-center justify-center">
+                <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
               </div>
               <span className="text-xs text-gray-500 font-medium">RUB</span>
             </div>
-            <p className="text-3xl font-bold text-white">{formatAmount(totalAmount)}</p>
-            <p className="text-gray-400 text-sm mt-1">Общая сумма</p>
+            <p className="text-xl sm:text-3xl font-bold text-white">{formatAmount(totalAmount)}</p>
+            <p className="text-gray-400 text-xs sm:text-sm mt-1">Общая сумма</p>
           </div>
 
-          <div className="glass-card rounded-3xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 rounded-2xl bg-purple-500/20 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-purple-400" />
+          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-purple-500/20 flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
               </div>
             </div>
-            <p className="text-3xl font-bold text-white">{formatAmount(avgDealSize)}</p>
-            <p className="text-gray-400 text-sm mt-1">Средний чек</p>
+            <p className="text-xl sm:text-3xl font-bold text-white">{formatAmount(avgDealSize)}</p>
+            <p className="text-gray-400 text-xs sm:text-sm mt-1">Средний чек</p>
           </div>
 
-          <div className="glass-card rounded-3xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 rounded-2xl bg-orange-500/20 flex items-center justify-center">
-                <Target className="w-5 h-5 text-orange-400" />
+          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-orange-500/20 flex items-center justify-center">
+                <Target className="w-4 h-4 sm:w-5 sm:h-5 text-orange-400" />
               </div>
-              <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs font-medium rounded-full">
+              <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-green-500/20 text-green-400 text-[10px] sm:text-xs font-medium rounded-full">
                 +12%
               </span>
             </div>
-            <p className="text-3xl font-bold text-white">{stages.length}</p>
-            <p className="text-gray-400 text-sm mt-1">Этапов воронки</p>
+            <p className="text-2xl sm:text-3xl font-bold text-white">{stages.length}</p>
+            <p className="text-gray-400 text-xs sm:text-sm mt-1">Этапов воронки</p>
           </div>
         </div>
 
@@ -1002,7 +1002,7 @@ export default function DealsPage() {
 
         {/* Kanban View */}
         {viewMode === "kanban" ? (
-          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-minimal">
+          <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 scrollbar-minimal snap-x snap-mandatory">
             {stages.map((stage: { id: string; name: string; color: string; order: number }) => (
               <KanbanColumn
                 key={stage.id}
@@ -1016,9 +1016,9 @@ export default function DealsPage() {
           </div>
         ) : (
           /* List View */
-          <div className="glass-card rounded-3xl overflow-hidden">
+          <div className="glass-card rounded-2xl sm:rounded-3xl overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b border-white/5">
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">

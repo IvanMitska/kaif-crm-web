@@ -55,7 +55,7 @@ export function DealModal({ isOpen, onClose, onSave, deal, stages }: DealModalPr
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] glass-card border-white/10">
+      <DialogContent className="max-w-[95vw] sm:max-w-[600px] glass-card border-white/10 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-white">{deal ? "Редактировать сделку" : "Новая сделка"}</DialogTitle>
           <DialogDescription className="text-gray-400">
@@ -64,7 +64,7 @@ export function DealModal({ isOpen, onClose, onSave, deal, stages }: DealModalPr
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="title" className="text-gray-400">Название сделки</Label>
                 <Input
@@ -87,7 +87,7 @@ export function DealModal({ isOpen, onClose, onSave, deal, stages }: DealModalPr
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="amount" className="text-gray-400">Сумма (₽)</Label>
                 <Input
@@ -119,7 +119,7 @@ export function DealModal({ isOpen, onClose, onSave, deal, stages }: DealModalPr
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="contact" className="text-gray-400">Контактное лицо</Label>
                 <Input
@@ -148,7 +148,7 @@ export function DealModal({ isOpen, onClose, onSave, deal, stages }: DealModalPr
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="phone" className="text-gray-400">Телефон</Label>
                 <Input

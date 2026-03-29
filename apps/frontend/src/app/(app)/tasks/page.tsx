@@ -329,10 +329,10 @@ export default function TasksPage() {
   return (
     <div className="h-full min-h-full flex flex-col">
       {/* Header */}
-      <div className="px-6 py-4 glass-card border-b border-white/10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <h1 className="text-2xl font-bold text-white">Задачи</h1>
+      <div className="px-4 sm:px-6 py-4 glass-card border-b border-white/10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <h1 className="text-xl sm:text-2xl font-bold text-white">Задачи</h1>
 
             {/* Stats Pills */}
             <div className="hidden lg:flex items-center gap-2">
@@ -377,16 +377,16 @@ export default function TasksPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Search */}
-            <div className="relative">
+            <div className="relative flex-1 sm:flex-none">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Поиск задач..."
+                placeholder="Поиск..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-64 pl-10 pr-4 py-2.5 bg-white/5 rounded-xl text-sm text-white placeholder-gray-400 border border-white/10 focus:ring-2 focus:ring-violet-500 focus:bg-white/10"
+                className="w-full sm:w-48 lg:w-64 pl-10 pr-4 py-2.5 bg-white/5 rounded-xl text-sm text-white placeholder-gray-400 border border-white/10 focus:ring-2 focus:ring-violet-500 focus:bg-white/10"
               />
             </div>
 
@@ -401,8 +401,8 @@ export default function TasksPage() {
               <SlidersHorizontal className="w-5 h-5" />
             </button>
 
-            {/* Export */}
-            <button className="p-2.5 hover:bg-white/5 rounded-xl">
+            {/* Export - hidden on mobile */}
+            <button className="hidden sm:block p-2.5 hover:bg-white/5 rounded-xl">
               <Download className="w-5 h-5 text-gray-400" />
             </button>
 
@@ -413,10 +413,10 @@ export default function TasksPage() {
                 setInitialStatus("PENDING");
                 setCreateDialogOpen(true);
               }}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-xl text-sm font-semibold hover:from-violet-600 hover:to-purple-600 shadow-sm"
+              className="flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-xl text-sm font-semibold hover:from-violet-600 hover:to-purple-600 shadow-sm"
             >
               <Plus className="w-5 h-5" />
-              Новая задача
+              <span className="hidden sm:inline">Новая задача</span>
             </button>
           </div>
         </div>
@@ -493,49 +493,49 @@ export default function TasksPage() {
       </div>
 
       {/* View Tabs */}
-      <div className="px-6 py-3 glass-card border-b border-white/10">
-        <div className="flex items-center justify-between">
+      <div className="px-4 sm:px-6 py-3 glass-card border-b border-white/10 overflow-x-auto">
+        <div className="flex items-center justify-between gap-4 min-w-fit">
           <div className="flex bg-white/5 rounded-xl p-1">
             <button
               onClick={() => setViewMode("list")}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium",
+                "flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap",
                 viewMode === "list"
                   ? "bg-white/10 text-white shadow-sm"
                   : "text-gray-400 hover:text-white"
               )}
             >
               <LayoutList className="w-4 h-4" />
-              Список
+              <span className="hidden sm:inline">Список</span>
             </button>
             <button
               onClick={() => setViewMode("kanban")}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium",
+                "flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap",
                 viewMode === "kanban"
                   ? "bg-white/10 text-white shadow-sm"
                   : "text-gray-400 hover:text-white"
               )}
             >
               <Kanban className="w-4 h-4" />
-              Канбан
+              <span className="hidden sm:inline">Канбан</span>
             </button>
             <button
               onClick={() => setViewMode("calendar")}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium",
+                "flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap",
                 viewMode === "calendar"
                   ? "bg-white/10 text-white shadow-sm"
                   : "text-gray-400 hover:text-white"
               )}
             >
               <CalendarIcon className="w-4 h-4" />
-              Календарь
+              <span className="hidden sm:inline">Календарь</span>
             </button>
           </div>
 
           {viewMode === "list" && (
-            <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2">
               <span className="text-sm text-gray-400">Группировка:</span>
               <select
                 value={groupBy}
@@ -554,9 +554,9 @@ export default function TasksPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-4 sm:p-6">
         {viewMode === "list" && (
-          <div className="glass-card rounded-2xl border border-white/10 p-6">
+          <div className="glass-card rounded-2xl border border-white/10 p-4 sm:p-6">
             <TaskListView
               tasks={filteredTasks}
               groupBy={groupBy}

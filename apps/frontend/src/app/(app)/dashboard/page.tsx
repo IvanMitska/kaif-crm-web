@@ -184,122 +184,122 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <button
             onClick={() => router.push('/deals?new=true')}
-            className="group bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 flex flex-col items-center gap-2 shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/30"
+            className="group bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-3 sm:p-4 flex flex-col items-center gap-2 shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/30"
           >
-            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-              <Plus className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/20 flex items-center justify-center">
+              <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
             <span className="text-white text-xs font-medium">Сделка</span>
           </button>
 
           <button
             onClick={() => router.push('/contacts?new=true')}
-            className="group glass-card rounded-2xl p-4 flex flex-col items-center gap-2 hover:bg-white/5"
+            className="group glass-card rounded-2xl p-3 sm:p-4 flex flex-col items-center gap-2 hover:bg-white/5"
           >
-            <div className="w-12 h-12 rounded-full bg-cyan-500/20 flex items-center justify-center">
-              <Users className="w-6 h-6 text-cyan-400" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-cyan-500/20 flex items-center justify-center">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
             </div>
             <span className="text-gray-300 text-xs font-medium">Контакт</span>
           </button>
 
           <button
             onClick={() => router.push('/tasks?new=true')}
-            className="group glass-card rounded-2xl p-4 flex flex-col items-center gap-2 hover:bg-white/5"
+            className="group glass-card rounded-2xl p-3 sm:p-4 flex flex-col items-center gap-2 hover:bg-white/5"
           >
-            <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center">
-              <CheckCircle2 className="w-6 h-6 text-orange-400" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-orange-500/20 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400" />
             </div>
             <span className="text-gray-300 text-xs font-medium">Задача</span>
           </button>
 
           <button
             onClick={() => router.push('/leads')}
-            className="group glass-card rounded-2xl p-4 flex flex-col items-center gap-2 hover:bg-white/5"
+            className="group glass-card rounded-2xl p-3 sm:p-4 flex flex-col items-center gap-2 hover:bg-white/5"
           >
-            <div className="w-12 h-12 rounded-full bg-violet-500/20 flex items-center justify-center">
-              <Zap className="w-6 h-6 text-violet-400" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-violet-500/20 flex items-center justify-center">
+              <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-violet-400" />
             </div>
             <span className="text-gray-300 text-xs font-medium">Лиды</span>
           </button>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {/* Active Deals */}
-          <div className="glass-card rounded-3xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 rounded-2xl bg-violet-500/20 flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-violet-400" />
+          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-violet-500/20 flex items-center justify-center">
+                <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-violet-400" />
               </div>
-              <div className="flex items-center gap-1 text-cyan-400 text-sm font-medium">
-                <ArrowUpRight className="w-4 h-4" />
+              <div className="flex items-center gap-1 text-cyan-400 text-xs sm:text-sm font-medium">
+                <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span>+{stats.dealsAddedToday}</span>
               </div>
             </div>
-            <div className="space-y-1">
-              <p className="text-3xl font-bold text-white">{stats.activeDeals}</p>
-              <p className="text-gray-500 text-sm">Активных сделок</p>
+            <div className="space-y-0.5 sm:space-y-1">
+              <p className="text-2xl sm:text-3xl font-bold text-white">{stats.activeDeals}</p>
+              <p className="text-gray-500 text-xs sm:text-sm">Активных сделок</p>
             </div>
           </div>
 
           {/* Total Amount */}
-          <div className="glass-card rounded-3xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-emerald-400" />
+          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-500/20 flex items-center justify-center">
+                <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
               </div>
               <span className="text-xs text-gray-500 font-medium">RUB</span>
             </div>
-            <div className="space-y-1">
-              <p className="text-3xl font-bold text-white">{formatAmount(stats.totalDealsAmount)}</p>
-              <p className="text-gray-500 text-sm">Сумма сделок</p>
+            <div className="space-y-0.5 sm:space-y-1">
+              <p className="text-xl sm:text-3xl font-bold text-white">{formatAmount(stats.totalDealsAmount)}</p>
+              <p className="text-gray-500 text-xs sm:text-sm">Сумма сделок</p>
             </div>
           </div>
 
           {/* Today Tasks */}
-          <div className="glass-card rounded-3xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 rounded-2xl bg-orange-500/20 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-orange-400" />
+          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-orange-500/20 flex items-center justify-center">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-orange-400" />
               </div>
               {stats.highPriorityTasks > 0 && (
-                <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs font-medium rounded-full">
+                <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-red-500/20 text-red-400 text-[10px] sm:text-xs font-medium rounded-full">
                   {stats.highPriorityTasks} срочных
                 </span>
               )}
             </div>
-            <div className="space-y-1">
-              <p className="text-3xl font-bold text-white">{stats.todayTasks}</p>
-              <p className="text-gray-500 text-sm">Задач на сегодня</p>
+            <div className="space-y-0.5 sm:space-y-1">
+              <p className="text-2xl sm:text-3xl font-bold text-white">{stats.todayTasks}</p>
+              <p className="text-gray-500 text-xs sm:text-sm">Задач на сегодня</p>
             </div>
           </div>
 
           {/* Contacts */}
-          <div className="glass-card rounded-3xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 flex items-center justify-center">
-                <Users className="w-5 h-5 text-cyan-400" />
+          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-cyan-500/20 flex items-center justify-center">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
               </div>
-              <div className="flex items-center gap-1 text-cyan-400 text-sm font-medium">
-                <TrendingUp className="w-4 h-4" />
+              <div className="flex items-center gap-1 text-cyan-400 text-xs sm:text-sm font-medium">
+                <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span>+{stats.recentContacts}</span>
               </div>
             </div>
-            <div className="space-y-1">
-              <p className="text-3xl font-bold text-white">{stats.totalContacts}</p>
-              <p className="text-gray-500 text-sm">Контактов</p>
+            <div className="space-y-0.5 sm:space-y-1">
+              <p className="text-2xl sm:text-3xl font-bold text-white">{stats.totalContacts}</p>
+              <p className="text-gray-500 text-xs sm:text-sm">Контактов</p>
             </div>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="grid lg:grid-cols-5 gap-4">
+        <div className="grid lg:grid-cols-5 gap-3 sm:gap-4">
 
           {/* Tasks Widget */}
-          <div className="lg:col-span-2 glass-card rounded-3xl p-5">
+          <div className="lg:col-span-2 glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5">
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/25">
@@ -371,7 +371,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Sales Funnel */}
-          <div className="lg:col-span-3 glass-card rounded-3xl p-5">
+          <div className="lg:col-span-3 glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5">
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-lg shadow-violet-500/25">
@@ -447,7 +447,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Activity */}
-        <div className="glass-card rounded-3xl p-5">
+        <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-lg shadow-cyan-500/25">

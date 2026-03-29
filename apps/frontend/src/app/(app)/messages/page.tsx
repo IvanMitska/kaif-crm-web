@@ -17,6 +17,7 @@ import {
   Image,
   Mic,
   Pin,
+  ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -178,7 +179,7 @@ const getChannelIcon = (channelId: string) => {
 
 export default function MessagesPage() {
   const [selectedChannel, setSelectedChannel] = useState("all");
-  const [selectedConversation, setSelectedConversation] = useState(1);
+  const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -202,8 +203,8 @@ export default function MessagesPage() {
 
   return (
     <div className="h-full min-h-full flex">
-      {/* Channels Sidebar */}
-      <div className="w-20 glass-card border-r border-white/5 flex flex-col py-4">
+      {/* Channels Sidebar - hidden on mobile */}
+      <div className="hidden md:flex w-20 glass-card border-r border-white/5 flex-col py-4">
         {channels.map((channel) => {
           const Icon = channel.icon;
           const isActive = selectedChannel === channel.id;
@@ -239,8 +240,12 @@ export default function MessagesPage() {
         })}
       </div>
 
-      {/* Conversations List */}
-      <div className="w-80 glass-card border-r border-white/5 flex flex-col">
+      {/* Conversations List - full width on mobile, hidden when chat open */}
+      <div className={cn(
+        "glass-card border-r border-white/5 flex flex-col",
+        "w-full md:w-80",
+        selectedConversation ? "hidden md:flex" : "flex"
+      )}>
         {/* Header */}
         <div className="p-4 border-b border-white/5">
           <h2 className="text-lg font-bold text-white mb-3">Сообщения</h2>
@@ -301,37 +306,47 @@ export default function MessagesPage() {
 
       {/* Chat Area */}
       {selectedConv ? (
-        <div className="flex-1 flex flex-col glass-card">
+        <div className={cn(
+          "flex-1 flex flex-col glass-card",
+          selectedConversation ? "flex" : "hidden md:flex"
+        )}>
           {/* Chat Header */}
-          <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-white/5 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-4">
+              {/* Mobile back button */}
+              <button
+                onClick={() => setSelectedConversation(null)}
+                className="md:hidden p-2 hover:bg-white/5 rounded-xl"
+              >
+                <ChevronLeft className="w-5 h-5 text-gray-400" />
+              </button>
               <div className="relative">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                <div className="w-10 sm:w-12 h-10 sm:h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm sm:text-base">
                   {selectedConv.avatar}
                 </div>
                 {selectedConv.online && (
-                  <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-[#0a0a1a] rounded-full" />
+                  <span className="absolute bottom-0 right-0 w-3 sm:w-3.5 h-3 sm:h-3.5 bg-green-500 border-2 border-[#0a0a1a] rounded-full" />
                 )}
               </div>
               <div>
-                <h3 className="font-semibold text-white">{selectedConv.name}</h3>
-                <div className="flex items-center gap-2 text-sm text-gray-400">
+                <h3 className="font-semibold text-white text-sm sm:text-base">{selectedConv.name}</h3>
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-400">
                   <span className={cn(
                     "w-4 h-4 rounded flex items-center justify-center text-white",
                     getChannelColor(selectedConv.channel)
                   )}>
                     {getChannelIcon(selectedConv.channel)}
                   </span>
-                  <span>{selectedConv.online ? "Онлайн" : "Был(а) недавно"}</span>
+                  <span className="hidden sm:inline">{selectedConv.online ? "Онлайн" : "Был(а) недавно"}</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
-              <button className="p-2.5 hover:bg-white/5 rounded-xl">
+            <div className="flex items-center gap-0.5 sm:gap-1">
+              <button className="hidden sm:block p-2.5 hover:bg-white/5 rounded-xl">
                 <Phone className="w-5 h-5 text-gray-400" />
               </button>
-              <button className="p-2.5 hover:bg-white/5 rounded-xl">
+              <button className="hidden sm:block p-2.5 hover:bg-white/5 rounded-xl">
                 <Video className="w-5 h-5 text-gray-400" />
               </button>
               <button className="p-2.5 hover:bg-white/5 rounded-xl">
@@ -344,8 +359,8 @@ export default function MessagesPage() {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="max-w-3xl mx-auto space-y-4">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6">
+            <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4">
               {/* Date separator */}
               <div className="flex items-center justify-center">
                 <span className="px-3 py-1 bg-white/10 rounded-full text-xs text-gray-400 shadow-sm">
@@ -403,9 +418,9 @@ export default function MessagesPage() {
           </div>
 
           {/* Input Area */}
-          <div className="px-6 py-4 border-t border-white/5">
-            <div className="flex items-end gap-3">
-              <div className="flex gap-1">
+          <div className="px-3 sm:px-6 py-3 sm:py-4 border-t border-white/5">
+            <div className="flex items-end gap-2 sm:gap-3">
+              <div className="hidden sm:flex gap-1">
                 <button className="p-2.5 hover:bg-white/5 rounded-xl">
                   <Paperclip className="w-5 h-5 text-gray-400" />
                 </button>

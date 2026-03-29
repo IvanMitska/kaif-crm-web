@@ -149,22 +149,22 @@ export default function AnalyticsPage() {
 
   return (
     <div className="h-full min-h-full overflow-y-auto">
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Аналитика</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-white">Аналитика</h1>
             <p className="text-sm text-gray-400 mt-1">Обзор ключевых показателей</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-1">
             {/* Period Selector */}
-            <div className="glass-card rounded-xl p-1 flex">
+            <div className="glass-card rounded-xl p-1 flex shrink-0">
               {periods.map((p) => (
                 <button
                   key={p.id}
                   onClick={() => setPeriod(p.id)}
                   className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium",
+                    "px-3 sm:px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap",
                     period === p.id
                       ? "bg-violet-500 text-white shadow-sm"
                       : "text-gray-400 hover:text-white"
@@ -175,11 +175,11 @@ export default function AnalyticsPage() {
               ))}
             </div>
 
-            {/* Actions */}
-            <button className="p-2.5 glass-card rounded-xl hover:bg-white/5">
+            {/* Actions - hidden on mobile */}
+            <button className="hidden sm:block p-2.5 glass-card rounded-xl hover:bg-white/5">
               <Filter className="w-5 h-5 text-gray-400" />
             </button>
-            <button className="p-2.5 glass-card rounded-xl hover:bg-white/5">
+            <button className="hidden sm:block p-2.5 glass-card rounded-xl hover:bg-white/5">
               <Download className="w-5 h-5 text-gray-400" />
             </button>
             <button className="p-2.5 glass-card rounded-xl hover:bg-white/5">
@@ -189,25 +189,25 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Quick Stats Pills */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="px-4 py-2 glass-card rounded-xl flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-1 scrollbar-minimal">
+          <div className="px-3 sm:px-4 py-2 glass-card rounded-xl flex items-center gap-2 shrink-0">
             <div className="w-2 h-2 bg-green-500 rounded-full" />
-            <span className="text-sm font-medium text-gray-300">Данные обновлены</span>
-            <span className="text-sm text-gray-500">5 мин назад</span>
+            <span className="text-sm font-medium text-gray-300 whitespace-nowrap">Данные обновлены</span>
+            <span className="text-sm text-gray-500 hidden sm:inline">5 мин назад</span>
           </div>
-          <div className="px-4 py-2 bg-violet-500/20 text-violet-400 rounded-xl text-sm font-medium">
-            96 сделок в работе
+          <div className="px-3 sm:px-4 py-2 bg-violet-500/20 text-violet-400 rounded-xl text-sm font-medium whitespace-nowrap shrink-0">
+            96 сделок
           </div>
-          <div className="px-4 py-2 bg-green-500/20 text-green-400 rounded-xl text-sm font-medium">
-            ₽12.4M в воронке
+          <div className="px-3 sm:px-4 py-2 bg-green-500/20 text-green-400 rounded-xl text-sm font-medium whitespace-nowrap shrink-0">
+            ₽12.4M
           </div>
-          <div className="px-4 py-2 bg-amber-500/20 text-amber-400 rounded-xl text-sm font-medium">
-            24 задачи на сегодня
+          <div className="px-3 sm:px-4 py-2 bg-amber-500/20 text-amber-400 rounded-xl text-sm font-medium whitespace-nowrap shrink-0">
+            24 задачи
           </div>
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <KPICard
             title="Общая выручка"
             value="₽6,478,000"
@@ -310,7 +310,7 @@ export default function AnalyticsPage() {
         </ChartCard>
 
         {/* Two Column Charts */}
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Funnel */}
           <ChartCard title="Воронка продаж" subtitle="Конверсия по этапам">
             <div className="space-y-4">
@@ -344,8 +344,8 @@ export default function AnalyticsPage() {
 
           {/* Pie Chart - Lead Sources */}
           <ChartCard title="Источники лидов" subtitle="Распределение по каналам">
-            <div className="flex items-center gap-8">
-              <div className="w-48 h-48">
+            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8">
+              <div className="w-40 sm:w-48 h-40 sm:h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -394,7 +394,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Activity and Top Managers */}
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Activity Chart */}
           <ChartCard title="Активность команды" subtitle="За последнюю неделю">
             <ResponsiveContainer width="100%" height={240}>
@@ -475,18 +475,18 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Goals Progress */}
-        <div className="glass-card rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="glass-card rounded-2xl p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
             <div>
               <h3 className="font-semibold text-white">Цели на месяц</h3>
               <p className="text-sm text-gray-400">Прогресс выполнения плана</p>
             </div>
-            <button className="px-4 py-2 bg-violet-500 hover:bg-purple-500 text-white text-sm font-medium rounded-xl">
+            <button className="px-4 py-2 bg-violet-500 hover:bg-purple-500 text-white text-sm font-medium rounded-xl w-full sm:w-auto">
               Настроить цели
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
             {[
               { name: "Выручка", current: 6478000, target: 8000000, color: "bg-violet-500" },
               { name: "Новые клиенты", current: 184, target: 200, color: "bg-green-500" },

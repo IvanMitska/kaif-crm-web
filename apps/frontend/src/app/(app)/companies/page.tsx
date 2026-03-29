@@ -270,13 +270,13 @@ export default function CompaniesPage() {
   return (
     <div className="h-full min-h-full flex flex-col">
       {/* Header */}
-      <div className="px-6 py-4 glass-card border-b border-white/10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <h1 className="text-2xl font-bold text-white">Компании</h1>
+      <div className="px-4 sm:px-6 py-4 glass-card border-b border-white/10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8">
+            <h1 className="text-xl sm:text-2xl font-bold text-white">Компании</h1>
 
-            {/* Stats Pills */}
-            <div className="flex items-center gap-3">
+            {/* Stats Pills - hidden on mobile */}
+            <div className="hidden lg:flex items-center gap-3">
               <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-lg">
                 <Building2 className="w-4 h-4 text-gray-400" />
                 <span className="text-sm text-gray-400">Всего</span>
@@ -300,16 +300,16 @@ export default function CompaniesPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
             {/* Search */}
-            <div className="relative">
+            <div className="relative flex-1 sm:flex-none">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Поиск компаний..."
+                placeholder="Поиск..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-72 pl-10 pr-4 py-2.5 bg-white/5 rounded-xl text-sm text-white placeholder-gray-400 border border-white/10 focus:ring-2 focus:ring-violet-500 focus:bg-white/10"
+                className="w-full sm:w-48 lg:w-72 pl-10 pr-4 py-2.5 bg-white/5 rounded-xl text-sm text-white placeholder-gray-400 border border-white/10 focus:ring-2 focus:ring-violet-500 focus:bg-white/10"
               />
             </div>
 
@@ -318,8 +318,8 @@ export default function CompaniesPage() {
               <Filter className="w-5 h-5 text-gray-400" />
             </button>
 
-            {/* View Toggle */}
-            <div className="flex bg-white/5 rounded-xl p-1">
+            {/* View Toggle - hidden on small mobile */}
+            <div className="hidden sm:flex bg-white/5 rounded-xl p-1">
               <button
                 onClick={() => setViewMode("cards")}
                 className={cn(
@@ -344,18 +344,18 @@ export default function CompaniesPage() {
               </button>
             </div>
 
-            {/* Export */}
-            <button className="p-2.5 hover:bg-white/5 rounded-xl">
+            {/* Export - hidden on mobile */}
+            <button className="hidden sm:block p-2.5 hover:bg-white/5 rounded-xl">
               <Download className="w-5 h-5 text-gray-400" />
             </button>
 
             {/* Add Button */}
             <button
               onClick={handleOpenCreateModal}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-xl text-sm font-semibold hover:from-violet-600 hover:to-purple-600 shadow-sm"
+              className="flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-xl text-sm font-semibold hover:from-violet-600 hover:to-purple-600 shadow-sm"
             >
               <Plus className="w-5 h-5" />
-              Новая компания
+              <span className="hidden sm:inline">Новая компания</span>
             </button>
           </div>
         </div>
@@ -367,8 +367,8 @@ export default function CompaniesPage() {
           /* Table View */
           <div className="flex-1 flex flex-col">
             {/* Table Header */}
-            <div className="glass-card border-b border-white/10 sticky top-0 z-10">
-              <div className="flex items-center h-12 text-sm">
+            <div className="glass-card border-b border-white/10 sticky top-0 z-10 overflow-x-auto">
+              <div className="flex items-center h-12 text-sm min-w-[950px]">
                 {/* Checkbox */}
                 <div className="w-12 flex items-center justify-center">
                   <button onClick={toggleSelectAll} className="p-1 hover:bg-white/5 rounded">
@@ -438,7 +438,8 @@ export default function CompaniesPage() {
             </div>
 
             {/* Table Body */}
-            <div className="flex-1 overflow-auto glass-card">
+            <div className="flex-1 overflow-x-auto overflow-y-auto glass-card">
+              <div className="min-w-[950px]">
               {sortedCompanies.map((company, index) => {
                 const isSelected = selectedCompanies.has(company.id);
                 const colors = industryColors[company.industry || ""] || { bg: "bg-white/10", text: "text-gray-300" };
@@ -604,20 +605,21 @@ export default function CompaniesPage() {
                   <p className="text-gray-400 font-medium">Компании не найдены</p>
                 </div>
               )}
+              </div>
             </div>
 
             {/* Selected Actions Bar */}
             {selectedCompanies.size > 0 && (
-              <div className="bg-gradient-to-r from-violet-500 to-purple-500 text-white px-6 py-3 flex items-center justify-between">
-                <span className="font-medium">Выбрано: {selectedCompanies.size}</span>
-                <div className="flex items-center gap-2">
-                  <button className="px-4 py-1.5 bg-white/20 rounded-lg text-sm font-medium hover:bg-white/30">
+              <div className="bg-gradient-to-r from-violet-500 to-purple-500 text-white px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+                <span className="font-medium text-sm sm:text-base whitespace-nowrap">Выбрано: {selectedCompanies.size}</span>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <button className="hidden sm:block px-4 py-1.5 bg-white/20 rounded-lg text-sm font-medium hover:bg-white/30">
                     Экспорт
                   </button>
-                  <button className="px-4 py-1.5 bg-white/20 rounded-lg text-sm font-medium hover:bg-white/30">
+                  <button className="hidden sm:block px-4 py-1.5 bg-white/20 rounded-lg text-sm font-medium hover:bg-white/30">
                     Объединить
                   </button>
-                  <button className="px-4 py-1.5 bg-red-500 rounded-lg text-sm font-medium hover:bg-red-600">
+                  <button className="px-3 sm:px-4 py-1.5 bg-red-500 rounded-lg text-sm font-medium hover:bg-red-600">
                     Удалить
                   </button>
                 </div>
@@ -626,8 +628,8 @@ export default function CompaniesPage() {
           </div>
         ) : (
           /* Cards View */
-          <div className="flex-1 overflow-auto p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="flex-1 overflow-auto p-4 sm:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {sortedCompanies.map((company) => {
                 const colors = industryColors[company.industry || ""] || { bg: "bg-white/10", text: "text-gray-300" };
 
@@ -717,16 +719,22 @@ export default function CompaniesPage() {
 
         {/* Company Details Sidebar */}
         {selectedCompany && (
-          <div className="w-96 glass-card border-l border-white/10 flex flex-col">
-            <div className="p-4 border-b border-white/5 flex items-center justify-between">
-              <h3 className="font-semibold text-white">Профиль компании</h3>
-              <button
-                onClick={() => setSelectedCompany(null)}
-                className="p-1.5 hover:bg-white/5 rounded-lg"
-              >
-                <X className="w-5 h-5 text-gray-400" />
-              </button>
-            </div>
+          <>
+            {/* Mobile backdrop */}
+            <div
+              className="fixed inset-0 bg-black/50 z-[60] md:hidden"
+              onClick={() => setSelectedCompany(null)}
+            />
+            <div className="fixed inset-0 md:inset-auto md:relative md:w-96 w-full glass-card md:border-l border-white/10 flex flex-col z-[70]">
+              <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                <h3 className="font-semibold text-white">Профиль компании</h3>
+                <button
+                  onClick={() => setSelectedCompany(null)}
+                  className="p-1.5 hover:bg-white/5 rounded-lg"
+                >
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
 
             <div className="flex-1 overflow-auto p-6">
               {/* Logo & Name */}
@@ -860,7 +868,8 @@ export default function CompaniesPage() {
                 Удалить компанию
               </button>
             </div>
-          </div>
+            </div>
+          </>
         )}
       </div>
 
