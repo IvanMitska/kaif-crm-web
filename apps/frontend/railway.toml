@@ -3,7 +3,7 @@ builder = "nixpacks"
 buildCommand = "pnpm install && pnpm run build"
 
 [deploy]
-startCommand = "node .next/standalone/server.js"
+startCommand = "node apps/frontend/.next/standalone/server.js"
 healthcheckPath = "/"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
