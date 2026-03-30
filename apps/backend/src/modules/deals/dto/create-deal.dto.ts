@@ -47,7 +47,7 @@ export class CreateDealDto {
   @Max(100)
   probability?: number;
 
-  @ApiPropertyOptional({ example: '2024-12-31', description: 'Ожидаемая дата закрытия' })
+  @ApiPropertyOptional({ example: '2026-12-31', description: 'Ожидаемая дата закрытия' })
   @IsOptional()
   @IsDateString()
   expectedDate?: string;

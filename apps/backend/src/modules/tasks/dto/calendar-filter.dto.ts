@@ -18,7 +18,7 @@ export class CalendarFilterDto {
   view?: CalendarView;
 
   @ApiPropertyOptional({ 
-    example: '2024-01-01',
+    example: '2026-01-01',
     description: 'Дата для отображения календаря' 
   })
   @IsOptional()

@@ -168,7 +168,7 @@ export default function AuthLayout({
             transition={{ delay: 0.3 }}
             className="mt-8 text-center text-sm text-gray-500"
           >
-            © 2024 KAIF CRM. Все права защищены.
+            © 2026 KAIF CRM. Все права защищены.
           </motion.p>
         </div>
       </div>

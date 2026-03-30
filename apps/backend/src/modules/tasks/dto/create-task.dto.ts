@@ -12,7 +12,7 @@ export class CreateTaskDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ example: '2024-12-31T10:00:00Z', description: 'Срок выполнения' })
+  @ApiPropertyOptional({ example: '2026-12-31T10:00:00Z', description: 'Срок выполнения' })
   @IsOptional()
   @IsDateString()
   dueDate?: string;
