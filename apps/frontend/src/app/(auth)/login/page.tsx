@@ -66,12 +66,7 @@ export default function LoginPage() {
   }
 
   return (
-    <motion.div
-      className="bg-white/[0.02] backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl shadow-black/20"
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.3 }}
-    >
+    <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-8 shadow-2xl shadow-black/20">
       <div className="text-center mb-8">
         <motion.h2
           className="text-2xl font-bold text-white mb-2"
@@ -233,6 +228,6 @@ export default function LoginPage() {
           </Link>
         </p>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }

@@ -55,24 +55,14 @@ export default function AuthLayout({
           transition={{ duration: 0.5 }}
         />
 
-        {/* Animated circles */}
-        <motion.div
-          className="absolute w-96 h-96 bg-violet-500/20 rounded-full blur-3xl"
-          animate={{
-            top: isLogin ? "25%" : "33%",
-            left: isLogin ? "25%" : "33%",
-            scale: [1, 1.1, 1],
-          }}
-          transition={{ duration: 0.5, scale: { duration: 3, repeat: Infinity } }}
+        {/* Static gradient circles - no animation for performance */}
+        <div
+          className="absolute w-96 h-96 bg-violet-500/15 rounded-full blur-2xl top-1/4 left-1/4"
+          style={{ willChange: 'transform' }}
         />
-        <motion.div
-          className="absolute w-80 h-80 bg-purple-500/20 rounded-full blur-3xl"
-          animate={{
-            bottom: isLogin ? "25%" : "33%",
-            right: "25%",
-            scale: [1, 1.15, 1],
-          }}
-          transition={{ duration: 0.5, scale: { duration: 3.5, repeat: Infinity, delay: 0.5 } }}
+        <div
+          className="absolute w-80 h-80 bg-purple-500/15 rounded-full blur-2xl bottom-1/4 right-1/4"
+          style={{ willChange: 'transform' }}
         />
 
         {/* Grid pattern */}
