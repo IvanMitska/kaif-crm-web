@@ -73,7 +73,7 @@ export default function TasksPage() {
 
         // Extract unique assignees from tasks
         const uniqueAssignees = new Map();
-        tasksData.forEach((task: Task) => {
+        (tasksData as Task[]).forEach((task) => {
           if (task.assignee) {
             uniqueAssignees.set(task.assignee.id, task.assignee);
           }
