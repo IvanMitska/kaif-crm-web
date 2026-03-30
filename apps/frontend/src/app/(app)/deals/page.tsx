@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Plus,
   Search,
@@ -30,7 +30,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { mockDeals, mockPipelines } from "@/lib/mock-data";
+import { dealsApi, pipelinesApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { DealModal } from "@/components/deals/DealModal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -709,9 +709,8 @@ function DealDetailModal({
 }
 
 export default function DealsPage() {
-  // Use mock data directly for instant loading
-  const [deals, setDeals] = useState<Deal[]>(mockDeals as Deal[]);
-  const [pipelines] = useState(mockPipelines);
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [pipelines, setPipelines] = useState<any[]>([]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStage] = useState<string | null>(null);
@@ -729,6 +728,27 @@ export default function DealsPage() {
   const [deletingDeal, setDeletingDeal] = useState<Deal | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Fetch data from API
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [dealsRes, pipelinesRes] = await Promise.all([
+          dealsApi.getAll(),
+          pipelinesApi.getAll(),
+        ]);
+
+        const dealsData = dealsRes.data?.items || dealsRes.data || [];
+        setDeals(dealsData);
+
+        const pipelinesData = Array.isArray(pipelinesRes.data) ? pipelinesRes.data : [pipelinesRes.data];
+        setPipelines(pipelinesData);
+      } catch (error) {
+        console.error("Failed to fetch deals:", error);
+      }
+    };
+    fetchData();
+  }, []);
+
   const currentPipeline = pipelines[0];
   const stages = currentPipeline?.stages?.sort((a: any, b: any) => a.order - b.order) || [];
 
@@ -738,15 +758,12 @@ export default function DealsPage() {
       if (selectedStage && deal.stageId !== selectedStage) return false;
       if (searchQuery && !deal.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
 
-      // Quick filters - mock implementation
-      if (quickFilter === "hot") {
-        return Math.random() > 0.5;
+      // Quick filters
+      if (quickFilter === "hot" && deal.temperature !== "hot") {
+        return false;
       }
-      if (quickFilter === "overdue") {
-        return Math.random() > 0.7;
-      }
-      if (quickFilter === "no-tasks") {
-        return Math.random() > 0.6;
+      if (quickFilter === "overdue" && !deal.hasOverdueTasks) {
+        return false;
       }
 
       return true;
@@ -799,28 +816,17 @@ export default function DealsPage() {
   const handleSaveDeal = async (dealData: any) => {
     try {
       if (editingDeal?.id) {
-        // Update existing deal
+        // Update existing deal via API
+        const response = await dealsApi.update(editingDeal.id, dealData);
+        const updatedDeal = response.data;
         setDeals(
-          deals.map(d =>
-            d.id === editingDeal.id ? {
-              ...d,
-              ...dealData,
-              stage: stages.find((s: any) => s.id === dealData.stageId) || d.stage,
-            } : d
-          )
+          deals.map(d => d.id === editingDeal.id ? { ...d, ...updatedDeal } : d)
         );
       } else {
-        // Create new deal
+        // Create new deal via API
         const stageId = dealData.stageId || defaultStageId || stages[0]?.id;
-        const stage = stages.find((s: any) => s.id === stageId);
-        const newDeal: Deal = {
-          ...dealData,
-          id: `deal-${Date.now()}`,
-          stageId,
-          stage: stage || { id: stageId, name: "Новый", color: "#3B82F6" },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
+        const response = await dealsApi.create({ ...dealData, stageId });
+        const newDeal = response.data;
         setDeals([newDeal, ...deals]);
       }
       handleCloseModal();
@@ -850,6 +856,7 @@ export default function DealsPage() {
 
     setIsDeleting(true);
     try {
+      await dealsApi.delete(deletingDeal.id);
       setDeals(deals.filter(d => d.id !== deletingDeal.id));
       handleCloseDeleteDialog();
     } catch (error) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   BarChart,
   Bar,
@@ -28,6 +28,7 @@ import {
   Award,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { analyticsApi, dealsApi, pipelinesApi } from "@/lib/api";
 
 const salesData = [
   { month: "Янв", sales: 850000, deals: 12, leads: 45 },
@@ -146,6 +147,58 @@ function ChartCard({
 
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState("month");
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
+  const [funnelStats, setFunnelStats] = useState<typeof funnelData>(funnelData);
+
+  // Fetch analytics data from API
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const [statsRes, dealsRes, pipelinesRes] = await Promise.all([
+          analyticsApi.getDashboardStats(),
+          dealsApi.getAll(),
+          pipelinesApi.getAll(),
+        ]);
+
+        setDashboardStats(statsRes.data);
+
+        // Calculate funnel from real deals data
+        const deals = dealsRes.data?.items || dealsRes.data || [];
+        const pipelines = Array.isArray(pipelinesRes.data) ? pipelinesRes.data : [pipelinesRes.data];
+        const pipeline = pipelines[0];
+
+        if (pipeline?.stages) {
+          const stages = pipeline.stages.sort((a: any, b: any) => a.order - b.order);
+          const funnelFromDeals = stages.map((stage: any, index: number) => {
+            const stageDeals = deals.filter((d: any) => d.stageId === stage.id);
+            const count = stageDeals.length;
+            const value = stageDeals.reduce((sum: number, d: any) => sum + (d.amount || 0), 0);
+            const colors = ["#8B5CF6", "#A855F7", "#F59E0B", "#10B981", "#EF4444", "#6366F1", "#EC4899"];
+            return {
+              stage: stage.name,
+              count,
+              value,
+              color: colors[index % colors.length],
+            };
+          });
+          if (funnelFromDeals.some((f: any) => f.count > 0)) {
+            setFunnelStats(funnelFromDeals);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch analytics:", error);
+      }
+    };
+    fetchAnalytics();
+  }, []);
+
+  // Calculate KPIs from dashboard stats or use defaults
+  const totalRevenue = dashboardStats?.totalRevenue || 6478000;
+  const conversionRate = dashboardStats?.conversionRate || 26.7;
+  const avgDealSize = dashboardStats?.avgDealSize || 104300;
+  const newClients = dashboardStats?.newClients || 184;
+  const totalDeals = dashboardStats?.totalDeals || 96;
+  const totalTasks = dashboardStats?.totalTasks || 24;
 
   return (
     <div className="h-full min-h-full overflow-y-auto">
@@ -196,13 +249,13 @@ export default function AnalyticsPage() {
             <span className="text-sm text-gray-500 hidden sm:inline">5 мин назад</span>
           </div>
           <div className="px-3 sm:px-4 py-2 bg-violet-500/20 text-violet-400 rounded-xl text-sm font-medium whitespace-nowrap shrink-0">
-            96 сделок
+            {totalDeals} сделок
           </div>
           <div className="px-3 sm:px-4 py-2 bg-green-500/20 text-green-400 rounded-xl text-sm font-medium whitespace-nowrap shrink-0">
-            ₽12.4M
+            ₽{(totalRevenue / 1000000).toFixed(1)}M
           </div>
           <div className="px-3 sm:px-4 py-2 bg-amber-500/20 text-amber-400 rounded-xl text-sm font-medium whitespace-nowrap shrink-0">
-            24 задачи
+            {totalTasks} задач
           </div>
         </div>
 
@@ -210,7 +263,7 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <KPICard
             title="Общая выручка"
-            value="₽6,478,000"
+            value={`₽${totalRevenue.toLocaleString("ru-RU")}`}
             change="+12.5%"
             changeType="up"
             icon={DollarSign}
@@ -218,7 +271,7 @@ export default function AnalyticsPage() {
           />
           <KPICard
             title="Конверсия"
-            value="26.7%"
+            value={`${conversionRate}%`}
             change="+3.2%"
             changeType="up"
             icon={Target}
@@ -226,7 +279,7 @@ export default function AnalyticsPage() {
           />
           <KPICard
             title="Средний чек"
-            value="₽104,300"
+            value={`₽${avgDealSize.toLocaleString("ru-RU")}`}
             change="-2.1%"
             changeType="down"
             icon={ShoppingCart}
@@ -234,7 +287,7 @@ export default function AnalyticsPage() {
           />
           <KPICard
             title="Новые клиенты"
-            value="184"
+            value={newClients.toString()}
             change="+18.7%"
             changeType="up"
             icon={UserPlus}
@@ -314,8 +367,9 @@ export default function AnalyticsPage() {
           {/* Funnel */}
           <ChartCard title="Воронка продаж" subtitle="Конверсия по этапам">
             <div className="space-y-4">
-              {funnelData.map((item) => {
-                const percentage = (item.count / funnelData[0].count) * 100;
+              {funnelStats.map((item) => {
+                const maxCount = Math.max(...funnelStats.map(f => f.count), 1);
+                const percentage = (item.count / maxCount) * 100;
                 return (
                   <div key={item.stage}>
                     <div className="flex items-center justify-between mb-2">

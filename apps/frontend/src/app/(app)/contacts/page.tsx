@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import {
   Search,
   Plus,
@@ -29,6 +29,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { contactsApi } from "@/lib/api";
 import { ContactModal } from "@/components/contacts/ContactModal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
@@ -45,16 +46,6 @@ interface Contact {
   isFavorite?: boolean;
 }
 
-// Mock data
-const mockContacts: Contact[] = [
-  { id: "1", firstName: "Иван", lastName: "Иванов", email: "ivan@tech.ru", phone: "+7 999 123-45-67", company: "ООО Технологии", position: "Директор", tags: ["VIP", "Партнер"], createdAt: "2024-01-15", isFavorite: true },
-  { id: "2", firstName: "Петр", lastName: "Петров", email: "petr@business.ru", phone: "+7 999 234-56-78", company: "ИП Петров", position: "Владелец", tags: ["Клиент"], createdAt: "2024-01-20", isFavorite: false },
-  { id: "3", firstName: "Анна", lastName: "Сидорова", email: "anna@service.ru", phone: "+7 999 345-67-89", company: "ООО Сервис", position: "Менеджер", tags: ["Лид"], createdAt: "2024-02-01", isFavorite: true },
-  { id: "4", firstName: "Мария", lastName: "Козлова", email: "maria@corp.ru", phone: "+7 999 456-78-90", company: "Корпорация", position: "HR", tags: ["Партнер"], createdAt: "2024-02-10", isFavorite: false },
-  { id: "5", firstName: "Дмитрий", lastName: "Волков", email: "dmitry@startup.ru", phone: "+7 999 567-89-01", company: "СтартАп", position: "CTO", tags: ["VIP", "Клиент"], createdAt: "2024-02-15", isFavorite: true },
-  { id: "6", firstName: "Елена", lastName: "Новикова", email: "elena@design.ru", phone: "+7 999 678-90-12", company: "Дизайн Студия", position: "Дизайнер", tags: ["Лид"], createdAt: "2024-02-20", isFavorite: false },
-];
-
 const tagColors: Record<string, { bg: string; text: string }> = {
   "VIP": { bg: "bg-amber-500/20", text: "text-amber-400" },
   "Партнер": { bg: "bg-purple-500/20", text: "text-purple-400" },
@@ -70,8 +61,21 @@ const getCompanyName = (company?: string | { id: string; name: string }): string
 };
 
 export default function ContactsPage() {
-  // Use mock data directly for instant loading
-  const [contacts, setContacts] = useState<Contact[]>(mockContacts);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+
+  // Fetch contacts from API
+  useEffect(() => {
+    const fetchContacts = async () => {
+      try {
+        const response = await contactsApi.getAll();
+        const contactsData = response.data?.items || response.data || [];
+        setContacts(contactsData as Contact[]);
+      } catch (error) {
+        console.error("Failed to fetch contacts:", error);
+      }
+    };
+    fetchContacts();
+  }, []);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
@@ -183,16 +187,14 @@ export default function ContactsPage() {
     setIsSaving(true);
     try {
       if (editingContact?.id) {
-        // Update existing contact
-        setContacts(contacts.map(c => c.id === editingContact.id ? { ...c, ...contactData } : c));
+        // Update existing contact via API
+        const response = await contactsApi.update(editingContact.id, contactData);
+        const updatedContact = response.data;
+        setContacts(contacts.map(c => c.id === editingContact.id ? { ...c, ...updatedContact } : c));
       } else {
-        // Create new contact
-        const newContact: Contact = {
-          ...contactData,
-          id: `contact-${Date.now()}`,
-          createdAt: new Date().toISOString(),
-          isFavorite: false,
-        };
+        // Create new contact via API
+        const response = await contactsApi.create(contactData);
+        const newContact = response.data;
         setContacts([newContact, ...contacts]);
       }
       handleCloseModal();
@@ -220,6 +222,7 @@ export default function ContactsPage() {
 
     setIsDeleting(true);
     try {
+      await contactsApi.delete(deletingContact.id);
       setContacts(contacts.filter(c => c.id !== deletingContact.id));
       if (selectedContact?.id === deletingContact.id) {
         setSelectedContact(null);

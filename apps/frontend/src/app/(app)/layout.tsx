@@ -34,7 +34,7 @@ export default function AppLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, logout } = useAuthStore();
+  const { user, logout, isAuthenticated } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,14 +77,28 @@ export default function AppLayout({
     }
   }, [pathname, isMobile]);
 
+  // Auth protection - redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, router]);
+
+  // Show loading while checking auth
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#050508]">
+        <div className="text-white">Загрузка...</div>
+      </div>
+    );
+  }
+
   const displayUser = user || {
     firstName: "Пользователь",
     lastName: "",
     email: "",
     role: "MANAGER"
   };
-
-  // Don't block render - show layout immediately
 
   const collapsed = !sidebarOpen && !isMobile;
 

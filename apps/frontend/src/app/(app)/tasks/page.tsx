@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Plus,
   LayoutList,
@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { tasksApi, contactsApi, dealsApi } from "@/lib/api";
 import {
   Task,
   TaskFilters as TaskFiltersType,
@@ -29,132 +30,11 @@ import { TaskListView } from "@/components/tasks/TaskListView";
 import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 import { TaskDetailSheet } from "@/components/tasks/TaskDetailSheet";
 
-const mockTasks: Task[] = [
-  {
-    id: "1",
-    title: "Позвонить клиенту по договору",
-    description: "Обсудить условия нового контракта и уточнить сроки поставки",
-    priority: "HIGH",
-    status: "PENDING",
-    dueDate: new Date().toISOString(),
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date().toISOString(),
-    assignee: { id: "1", name: "Иван Петров" },
-    contact: { id: "1", name: "Алексей Смирнов" },
-    deal: { id: "1", title: "Поставка оборудования" },
-    tags: ["важно", "клиент"],
-    checklist: [
-      { id: "1", title: "Подготовить документы", completed: true },
-      { id: "2", title: "Уточнить цены", completed: false },
-      { id: "3", title: "Отправить КП", completed: false },
-    ],
-  },
-  {
-    id: "2",
-    title: "Отправить коммерческое предложение",
-    description: "Подготовить и отправить КП для ООО Ромашка",
-    priority: "MEDIUM",
-    status: "IN_PROGRESS",
-    dueDate: new Date(Date.now() + 86400000).toISOString(),
-    createdAt: new Date(Date.now() - 172800000).toISOString(),
-    updatedAt: new Date().toISOString(),
-    assignee: { id: "2", name: "Мария Иванова" },
-    tags: ["продажи"],
-  },
-  {
-    id: "3",
-    title: "Встреча с партнерами",
-    description: "Обсуждение стратегического партнерства",
-    priority: "HIGH",
-    status: "PENDING",
-    dueDate: new Date(Date.now() + 172800000).toISOString(),
-    createdAt: new Date(Date.now() - 259200000).toISOString(),
-    updatedAt: new Date().toISOString(),
-    assignee: { id: "1", name: "Иван Петров" },
-    contact: { id: "2", name: "Дмитрий Козлов" },
-  },
-  {
-    id: "4",
-    title: "Подготовить отчет за месяц",
-    priority: "LOW",
-    status: "PENDING",
-    dueDate: new Date(Date.now() + 604800000).toISOString(),
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "5",
-    title: "Провести презентацию продукта",
-    description: "Демонстрация нового функционала для клиента",
-    priority: "URGENT",
-    status: "IN_PROGRESS",
-    dueDate: new Date().toISOString(),
-    createdAt: new Date(Date.now() - 172800000).toISOString(),
-    updatedAt: new Date().toISOString(),
-    assignee: { id: "3", name: "Анна Сидорова" },
-    deal: { id: "2", title: "Внедрение CRM" },
-    checklist: [
-      { id: "1", title: "Подготовить слайды", completed: true },
-      { id: "2", title: "Протестировать демо", completed: true },
-      { id: "3", title: "Отправить приглашения", completed: true },
-    ],
-  },
-  {
-    id: "6",
-    title: "Обновить документацию",
-    priority: "LOW",
-    status: "COMPLETED",
-    dueDate: new Date(Date.now() - 86400000).toISOString(),
-    completedAt: new Date().toISOString(),
-    createdAt: new Date(Date.now() - 432000000).toISOString(),
-    updatedAt: new Date().toISOString(),
-    assignee: { id: "2", name: "Мария Иванова" },
-  },
-  {
-    id: "7",
-    title: "Просроченная задача",
-    description: "Эта задача уже просрочена",
-    priority: "HIGH",
-    status: "PENDING",
-    dueDate: new Date(Date.now() - 172800000).toISOString(),
-    createdAt: new Date(Date.now() - 432000000).toISOString(),
-    updatedAt: new Date().toISOString(),
-    assignee: { id: "1", name: "Иван Петров" },
-  },
-  {
-    id: "8",
-    title: "Интеграция с 1С",
-    description: "Настроить обмен данными с 1С",
-    priority: "MEDIUM",
-    status: "PENDING",
-    dueDate: new Date(Date.now() + 432000000).toISOString(),
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date().toISOString(),
-    assignee: { id: "3", name: "Анна Сидорова" },
-    tags: ["интеграция", "технический"],
-  },
-];
-
-const mockAssignees = [
-  { id: "1", name: "Иван Петров" },
-  { id: "2", name: "Мария Иванова" },
-  { id: "3", name: "Анна Сидорова" },
-];
-
-const mockContacts = [
-  { id: "1", name: "Алексей Смирнов" },
-  { id: "2", name: "Дмитрий Козлов" },
-  { id: "3", name: "Елена Новикова" },
-];
-
-const mockDeals = [
-  { id: "1", title: "Поставка оборудования" },
-  { id: "2", title: "Внедрение CRM" },
-  { id: "3", title: "Консалтинг" },
-];
-
 export default function TasksPage() {
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [assignees, setAssignees] = useState<Array<{ id: string; name: string }>>([]);
+  const [contacts, setContacts] = useState<Array<{ id: string; name: string }>>([]);
+  const [deals, setDeals] = useState<Array<{ id: string; title: string }>>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [filters, setFilters] = useState<TaskFiltersType>({
     status: "ALL",
@@ -168,6 +48,43 @@ export default function TasksPage() {
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [initialStatus, setInitialStatus] = useState<TaskStatus>("PENDING");
   const [showFilters, setShowFilters] = useState(false);
+
+  // Fetch tasks and related data from API
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [tasksRes, contactsRes, dealsRes] = await Promise.all([
+          tasksApi.getAll(),
+          contactsApi.getAll(),
+          dealsApi.getAll(),
+        ]);
+
+        const tasksData = tasksRes.data?.items || tasksRes.data || [];
+        setTasks(tasksData as Task[]);
+
+        const contactsData = contactsRes.data?.items || contactsRes.data || [];
+        setContacts(contactsData.map((c: any) => ({
+          id: c.id,
+          name: `${c.firstName} ${c.lastName}`
+        })));
+
+        const dealsData = dealsRes.data?.items || dealsRes.data || [];
+        setDeals(dealsData.map((d: any) => ({ id: d.id, title: d.title })));
+
+        // Extract unique assignees from tasks
+        const uniqueAssignees = new Map();
+        tasksData.forEach((task: Task) => {
+          if (task.assignee) {
+            uniqueAssignees.set(task.assignee.id, task.assignee);
+          }
+        });
+        setAssignees(Array.from(uniqueAssignees.values()));
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+      }
+    };
+    fetchData();
+  }, []);
 
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
@@ -246,37 +163,62 @@ export default function TasksPage() {
     ? Math.round((stats.completed / stats.total) * 100)
     : 0;
 
-  const handleTaskComplete = (id: string) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === id
-          ? {
-              ...task,
-              status: task.status === "COMPLETED" ? "PENDING" : "COMPLETED",
-              completedAt: task.status === "COMPLETED" ? undefined : new Date().toISOString(),
-            }
-          : task
-      )
-    );
+  const handleTaskComplete = async (id: string) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    const newStatus = task.status === "COMPLETED" ? "PENDING" : "COMPLETED";
+    try {
+      await tasksApi.update(id, {
+        status: newStatus,
+        completedAt: newStatus === "COMPLETED" ? new Date().toISOString() : null,
+      });
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === id
+            ? {
+                ...t,
+                status: newStatus,
+                completedAt: newStatus === "COMPLETED" ? new Date().toISOString() : undefined,
+              }
+            : t
+        )
+      );
+    } catch (error) {
+      console.error("Failed to update task:", error);
+    }
   };
 
-  const handleStatusChange = (id: string, status: TaskStatus) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === id
-          ? {
-              ...task,
-              status,
-              completedAt: status === "COMPLETED" ? new Date().toISOString() : undefined,
-            }
-          : task
-      )
-    );
+  const handleStatusChange = async (id: string, status: TaskStatus) => {
+    try {
+      await tasksApi.update(id, {
+        status,
+        completedAt: status === "COMPLETED" ? new Date().toISOString() : null,
+      });
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === id
+            ? {
+                ...task,
+                status,
+                completedAt: status === "COMPLETED" ? new Date().toISOString() : undefined,
+              }
+            : task
+        )
+      );
+    } catch (error) {
+      console.error("Failed to change status:", error);
+    }
   };
 
-  const handleTaskDelete = (id: string) => {
-    setTasks((prev) => prev.filter((task) => task.id !== id));
-    setDetailSheetOpen(false);
+  const handleTaskDelete = async (id: string) => {
+    try {
+      await tasksApi.delete(id);
+      setTasks((prev) => prev.filter((task) => task.id !== id));
+      setDetailSheetOpen(false);
+    } catch (error) {
+      console.error("Failed to delete task:", error);
+    }
   };
 
   const handleTaskClick = (task: Task) => {
@@ -290,33 +232,30 @@ export default function TasksPage() {
     setDetailSheetOpen(false);
   };
 
-  const handleCreateTask = (taskData: Partial<Task>) => {
-    if (editTask) {
-      setTasks((prev) =>
-        prev.map((task) =>
-          task.id === editTask.id
-            ? { ...task, ...taskData, updatedAt: new Date().toISOString() }
-            : task
-        )
-      );
-      setEditTask(null);
-    } else {
-      const newTask: Task = {
-        id: Date.now().toString(),
-        title: taskData.title || "",
-        description: taskData.description,
-        priority: taskData.priority || "MEDIUM",
-        status: taskData.status || initialStatus,
-        dueDate: taskData.dueDate,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        assignee: taskData.assignee,
-        contact: taskData.contact,
-        deal: taskData.deal,
-        tags: taskData.tags,
-        checklist: taskData.checklist,
-      };
-      setTasks((prev) => [newTask, ...prev]);
+  const handleCreateTask = async (taskData: Partial<Task>) => {
+    try {
+      if (editTask) {
+        const response = await tasksApi.update(editTask.id, taskData);
+        const updatedTask = response.data;
+        setTasks((prev) =>
+          prev.map((task) =>
+            task.id === editTask.id
+              ? { ...task, ...updatedTask, updatedAt: new Date().toISOString() }
+              : task
+          )
+        );
+        setEditTask(null);
+      } else {
+        const response = await tasksApi.create({
+          ...taskData,
+          status: taskData.status || initialStatus,
+          priority: taskData.priority || "MEDIUM",
+        });
+        const newTask = response.data;
+        setTasks((prev) => [newTask, ...prev]);
+      }
+    } catch (error) {
+      console.error("Failed to save task:", error);
     }
   };
 
@@ -459,7 +398,7 @@ export default function TasksPage() {
                 <option value="">Все исполнители</option>
                 <option value="current">Мои задачи</option>
                 <option value="unassigned">Без исполнителя</option>
-                {mockAssignees.map((a) => (
+                {assignees.map((a) => (
                   <option key={a.id} value={a.id}>{a.name}</option>
                 ))}
               </select>
@@ -623,9 +562,9 @@ export default function TasksPage() {
         }}
         onSubmit={handleCreateTask}
         initialStatus={initialStatus}
-        assignees={mockAssignees}
-        contacts={mockContacts}
-        deals={mockDeals}
+        assignees={assignees}
+        contacts={contacts}
+        deals={deals}
         editTask={editTask}
       />
 

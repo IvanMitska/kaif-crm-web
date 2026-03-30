@@ -24,6 +24,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sheet,
   SheetContent,
+  SheetTitle,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import {
   DropdownMenu,
@@ -126,6 +128,8 @@ export function TaskDetailSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-lg p-0 gap-0 bg-[#0d0d14] border-white/10">
+        <SheetTitle className="sr-only">Детали задачи</SheetTitle>
+        <SheetDescription className="sr-only">Просмотр и редактирование задачи</SheetDescription>
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="px-6 pt-6 pb-5 border-b border-white/5">

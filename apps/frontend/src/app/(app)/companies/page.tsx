@@ -55,15 +55,6 @@ interface Company {
   isFavorite?: boolean;
 }
 
-const mockCompanies: Company[] = [
-  { id: "1", name: "ООО Технологии", inn: "1234567890", revenue: 5000000, employees: 50, phone: "+7 (495) 123-45-67", email: "info@tech.ru", website: "tech.ru", address: "Москва, ул. Технологическая, 10", status: "active", industry: "IT", contactsCount: 5, dealsCount: 3, createdAt: "2024-01-10", isFavorite: true },
-  { id: "2", name: "АО Инновации", inn: "0987654321", revenue: 15000000, employees: 120, phone: "+7 (495) 234-56-78", email: "info@innov.ru", website: "innovations.ru", address: "Москва, ул. Инновационная, 25", status: "active", industry: "Финансы", contactsCount: 8, dealsCount: 5, createdAt: "2024-01-15", isFavorite: true },
-  { id: "3", name: "ИП Петров", inn: "1122334455", revenue: 1500000, employees: 5, phone: "+7 (495) 345-67-89", email: "petrov@mail.ru", website: "petrov.ru", address: "Москва, ул. Садовая, 5", status: "active", industry: "Торговля", contactsCount: 2, dealsCount: 1, createdAt: "2024-02-01", isFavorite: false },
-  { id: "4", name: "СтройПроект", inn: "5544332211", revenue: 8000000, employees: 85, phone: "+7 (495) 456-78-90", email: "info@stroy.ru", website: "stroyproject.ru", address: "Москва, ул. Строителей, 25", status: "active", industry: "Строительство", contactsCount: 12, dealsCount: 4, createdAt: "2024-02-10", isFavorite: false },
-  { id: "5", name: "МедиаГрупп", inn: "9988776655", revenue: 4500000, employees: 35, phone: "+7 (495) 567-89-01", email: "media@group.ru", website: "mediagroup.ru", address: "Москва, ул. Тверская, 12", status: "inactive", industry: "Медиа", contactsCount: 6, dealsCount: 2, createdAt: "2024-02-15", isFavorite: false },
-  { id: "6", name: "КорпСервис", inn: "6677889900", revenue: 12000000, employees: 200, phone: "+7 (495) 678-90-12", email: "corp@service.ru", website: "corpservice.ru", address: "Москва, Бизнес-центр Империя", status: "active", industry: "Консалтинг", contactsCount: 15, dealsCount: 8, createdAt: "2024-02-20", isFavorite: true },
-];
-
 const industryColors: Record<string, { bg: string; text: string }> = {
   "IT": { bg: "bg-blue-500/20", text: "text-blue-400" },
   "Финансы": { bg: "bg-green-500/20", text: "text-green-400" },
@@ -74,7 +65,7 @@ const industryColors: Record<string, { bg: string; text: string }> = {
 };
 
 export default function CompaniesPage() {
-  const [companies, setCompanies] = useState<Company[]>(mockCompanies);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(new Set());
@@ -93,6 +84,20 @@ export default function CompaniesPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingCompany, setDeletingCompany] = useState<Company | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Fetch companies from API
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        const response = await companiesApi.getAll();
+        const companiesData = response.data?.items || response.data || [];
+        setCompanies(companiesData as Company[]);
+      } catch (error) {
+        console.error("Failed to fetch companies:", error);
+      }
+    };
+    fetchCompanies();
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -205,21 +210,16 @@ export default function CompaniesPage() {
     setIsSaving(true);
     try {
       if (editingCompany?.id) {
-        // Update existing company
-        await companiesApi.update(editingCompany.id, companyData);
+        // Update existing company via API
+        const response = await companiesApi.update(editingCompany.id, companyData);
+        const updatedCompany = response.data;
         setCompanies(companies.map(c =>
-          c.id === editingCompany.id ? { ...c, ...companyData } : c
+          c.id === editingCompany.id ? { ...c, ...updatedCompany } : c
         ));
       } else {
-        // Create new company
-        const newCompany: Company = {
-          ...companyData,
-          id: `company-${Date.now()}`,
-          createdAt: new Date().toISOString(),
-          isFavorite: false,
-          contactsCount: 0,
-          dealsCount: 0,
-        };
+        // Create new company via API
+        const response = await companiesApi.create(companyData);
+        const newCompany = response.data;
         setCompanies([newCompany, ...companies]);
       }
       handleCloseModal();
