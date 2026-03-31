@@ -10,7 +10,7 @@ import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { Enable2FADto } from './dto/enable-2fa.dto';
 import { Verify2FADto } from './dto/verify-2fa.dto';
-import { User } from '@prisma/client';
+import { User, OrgRole, OrgMember } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -32,18 +32,48 @@ export class AuthService {
 
     const hashedPassword = await argon2.hash(registerDto.password);
 
-    const user = await this.prisma.user.create({
-      data: {
-        ...registerDto,
-        password: hashedPassword,
-      },
+    // Create user, organization, and membership in transaction
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Create user
+      const user = await tx.user.create({
+        data: {
+          email: registerDto.email,
+          password: hashedPassword,
+          firstName: registerDto.firstName,
+          lastName: registerDto.lastName,
+          phone: registerDto.phone,
+        },
+      });
+
+      // Create organization
+      const orgName = registerDto.organizationName;
+      const slug = this.generateSlug(orgName);
+
+      const organization = await tx.organization.create({
+        data: {
+          name: orgName,
+          slug,
+        },
+      });
+
+      // Create membership as owner
+      const membership = await tx.orgMember.create({
+        data: {
+          userId: user.id,
+          organizationId: organization.id,
+          role: OrgRole.OWNER,
+        },
+      });
+
+      return { user, organization, membership };
     });
 
-    const tokens = await this.generateTokens(user);
-    await this.saveRefreshToken(user.id, tokens.refreshToken);
+    const tokens = await this.generateTokens(result.user, result.membership);
+    await this.saveRefreshToken(result.user.id, tokens.refreshToken);
 
     return {
-      user: this.sanitizeUser(user),
+      user: this.sanitizeUser(result.user),
+      organization: result.organization,
       ...tokens,
     };
   }
@@ -65,7 +95,19 @@ export class AuthService {
       }
     }
 
-    const tokens = await this.generateTokens(user);
+    // Get user's primary organization membership
+    const membership = await this.prisma.orgMember.findFirst({
+      where: {
+        userId: user.id,
+        isActive: true,
+      },
+      include: {
+        organization: true,
+      },
+      orderBy: { joinedAt: 'asc' },
+    });
+
+    const tokens = await this.generateTokens(user, membership);
     await this.saveRefreshToken(user.id, tokens.refreshToken);
 
     await this.prisma.user.update({
@@ -75,6 +117,7 @@ export class AuthService {
 
     return {
       user: this.sanitizeUser(user),
+      organization: membership?.organization || null,
       ...tokens,
     };
   }
@@ -99,16 +142,29 @@ export class AuthService {
       throw new UnauthorizedException('Недействительный refresh token');
     }
 
-    const tokens = await this.generateTokens(token.user);
-    
+    // Get user's primary organization membership
+    const membership = await this.prisma.orgMember.findFirst({
+      where: {
+        userId: token.userId,
+        isActive: true,
+      },
+      include: {
+        organization: true,
+      },
+      orderBy: { joinedAt: 'asc' },
+    });
+
+    const tokens = await this.generateTokens(token.user, membership);
+
     await this.prisma.refreshToken.delete({
       where: { id: token.id },
     });
-    
+
     await this.saveRefreshToken(token.userId, tokens.refreshToken);
 
     return {
       user: this.sanitizeUser(token.user),
+      organization: membership?.organization || null,
       ...tokens,
     };
   }
@@ -201,11 +257,48 @@ export class AuthService {
     return user;
   }
 
-  private async generateTokens(user: User) {
+  async switchOrganization(userId: string, organizationId: string) {
+    // Verify user is member of the organization
+    const membership = await this.prisma.orgMember.findFirst({
+      where: {
+        userId,
+        organizationId,
+        isActive: true,
+      },
+      include: {
+        organization: true,
+      },
+    });
+
+    if (!membership) {
+      throw new BadRequestException('Вы не являетесь участником этой организации');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Пользователь не найден');
+    }
+
+    const tokens = await this.generateTokens(user, membership);
+    await this.saveRefreshToken(user.id, tokens.refreshToken);
+
+    return {
+      user: this.sanitizeUser(user),
+      organization: membership.organization,
+      ...tokens,
+    };
+  }
+
+  private async generateTokens(user: User, membership?: OrgMember | null) {
     const payload = {
       sub: user.id,
       email: user.email,
       role: user.role,
+      organizationId: membership?.organizationId || null,
+      orgRole: membership?.role || null,
     };
 
     const [accessToken, refreshToken] = await Promise.all([
@@ -247,5 +340,16 @@ export class AuthService {
   private sanitizeUser(user: User) {
     const { password, twoFactorSecret, ...sanitized } = user;
     return sanitized;
+  }
+
+  private generateSlug(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim()
+      .substring(0, 50)
+      + '-' + Date.now().toString(36);
   }
 }

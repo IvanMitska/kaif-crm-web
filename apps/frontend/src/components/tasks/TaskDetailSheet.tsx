@@ -456,7 +456,7 @@ export function TaskDetailSheet({
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-500">Обновлено</span>
-                    <span className="font-medium text-gray-300">{formatCreatedDate(task.updatedAt)}</span>
+                    <span className="font-medium text-gray-300">{task.updatedAt ? formatCreatedDate(task.updatedAt) : '—'}</span>
                   </div>
                 </div>
               </div>

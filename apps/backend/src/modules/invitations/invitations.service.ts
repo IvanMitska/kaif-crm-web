@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, NotFoundException, Logger } from '@nes
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
-import { UserRole, InvitationStatus } from '@prisma/client';
+import { OrgRole, InvitationStatus } from '@prisma/client';
 import * as argon2 from 'argon2';
 
 @Injectable()
@@ -11,19 +11,30 @@ export class InvitationsService {
 
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateInvitationDto, invitedById: string) {
-    // Check if user already exists
+  async create(dto: CreateInvitationDto, invitedById: string, organizationId: string) {
+    // Check if user is already a member of this organization
     const existingUser = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
+
     if (existingUser) {
-      throw new BadRequestException('Пользователь с таким email уже существует');
+      // Check if already a member of this organization
+      const existingMember = await this.prisma.orgMember.findFirst({
+        where: {
+          userId: existingUser.id,
+          organizationId,
+        },
+      });
+      if (existingMember) {
+        throw new BadRequestException('Пользователь уже является участником организации');
+      }
     }
 
-    // Check for pending invitation
+    // Check for pending invitation to this organization
     const existingInvitation = await this.prisma.invitation.findFirst({
       where: {
         email: dto.email,
+        organizationId,
         status: InvitationStatus.PENDING,
       },
     });
@@ -38,13 +49,17 @@ export class InvitationsService {
     const invitation = await this.prisma.invitation.create({
       data: {
         email: dto.email,
-        role: dto.role || UserRole.OPERATOR,
+        role: dto.role || OrgRole.OPERATOR,
+        organizationId,
         invitedById,
         expiresAt,
       },
       include: {
         invitedBy: {
           select: { firstName: true, lastName: true, email: true },
+        },
+        organization: {
+          select: { name: true },
         },
       },
     });
@@ -55,6 +70,7 @@ export class InvitationsService {
 ========== INVITATION EMAIL ==========
 To: ${invitation.email}
 From: ${invitation.invitedBy.firstName} ${invitation.invitedBy.lastName}
+Organization: ${invitation.organization?.name}
 Role: ${invitation.role}
 Link: ${inviteUrl}
 Expires: ${invitation.expiresAt}
@@ -67,14 +83,20 @@ Expires: ${invitation.expiresAt}
     };
   }
 
-  async findAll(params: {
-    skip?: number;
-    take?: number;
-    status?: InvitationStatus;
-  } = {}) {
+  async findAll(
+    organizationId: string,
+    params: {
+      skip?: number;
+      take?: number;
+      status?: InvitationStatus;
+    } = {},
+  ) {
     const { skip = 0, take = 50, status } = params;
 
-    const where = status ? { status } : {};
+    const where: any = { organizationId };
+    if (status) {
+      where.status = status;
+    }
 
     const [invitations, total] = await Promise.all([
       this.prisma.invitation.findMany({
@@ -104,6 +126,9 @@ Expires: ${invitation.expiresAt}
         invitedBy: {
           select: { firstName: true, lastName: true },
         },
+        organization: {
+          select: { id: true, name: true },
+        },
       },
     });
 
@@ -130,6 +155,9 @@ Expires: ${invitation.expiresAt}
   async accept(dto: AcceptInvitationDto) {
     const invitation = await this.prisma.invitation.findUnique({
       where: { token: dto.token },
+      include: {
+        organization: true,
+      },
     });
 
     if (!invitation) {
@@ -148,44 +176,71 @@ Expires: ${invitation.expiresAt}
       throw new BadRequestException('Приглашение истекло');
     }
 
-    // Check if email is still available
-    const existingUser = await this.prisma.user.findUnique({
+    // Check if user already exists
+    let user = await this.prisma.user.findUnique({
       where: { email: invitation.email },
     });
-    if (existingUser) {
-      throw new BadRequestException('Пользователь с таким email уже существует');
+
+    // Check if already a member of this organization
+    if (user && invitation.organizationId) {
+      const existingMember = await this.prisma.orgMember.findFirst({
+        where: {
+          userId: user.id,
+          organizationId: invitation.organizationId,
+        },
+      });
+      if (existingMember) {
+        throw new BadRequestException('Вы уже являетесь участником этой организации');
+      }
     }
 
-    // Create user with hashed password
-    const hashedPassword = await argon2.hash(dto.password);
+    // Transaction to create user (if needed) and membership
+    const result = await this.prisma.$transaction(async (tx) => {
+      if (!user) {
+        // Create new user
+        const hashedPassword = await argon2.hash(dto.password);
+        user = await tx.user.create({
+          data: {
+            email: invitation.email,
+            password: hashedPassword,
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            phone: dto.phone,
+            isActive: true,
+          },
+        });
+      }
 
-    const user = await this.prisma.user.create({
-      data: {
-        email: invitation.email,
-        password: hashedPassword,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        phone: dto.phone,
-        role: invitation.role,
-        isActive: true,
-      },
-    });
+      // Create organization membership
+      if (invitation.organizationId) {
+        await tx.orgMember.create({
+          data: {
+            userId: user.id,
+            organizationId: invitation.organizationId,
+            role: invitation.role,
+          },
+        });
+      }
 
-    // Update invitation
-    await this.prisma.invitation.update({
-      where: { id: invitation.id },
-      data: {
-        status: InvitationStatus.ACCEPTED,
-        acceptedById: user.id,
-        acceptedAt: new Date(),
-      },
+      // Update invitation
+      await tx.invitation.update({
+        where: { id: invitation.id },
+        data: {
+          status: InvitationStatus.ACCEPTED,
+          acceptedById: user.id,
+          acceptedAt: new Date(),
+        },
+      });
+
+      return user;
     });
 
     // Return user without password
-    const { password: _, ...userWithoutPassword } = user;
+    const { password: _, ...userWithoutPassword } = result;
     return {
       user: userWithoutPassword,
-      message: 'Регистрация успешно завершена'
+      organization: invitation.organization,
+      message: 'Регистрация успешно завершена',
     };
   }
 

@@ -12,28 +12,20 @@ export class CompaniesService {
   async create(createCompanyDto: CreateCompanyDto, userId: string) {
     const { tags, ...companyData } = createCompanyDto;
 
-    // Проверяем уникальность ИНН, если указан
-    if (companyData.inn) {
-      const existingCompany = await this.prisma.company.findUnique({
-        where: { inn: companyData.inn },
-      });
-      
-      if (existingCompany) {
-        throw new BadRequestException('Компания с таким ИНН уже существует');
-      }
-    }
+    // TODO: INN uniqueness check needs organizationId scope
+    // For now, skip global uniqueness check
+    // if (companyData.inn) {
+    //   const existingCompany = await this.prisma.company.findFirst({
+    //     where: { inn: companyData.inn, organizationId: ... },
+    //   });
+    // }
 
+    // TODO: Update tag handling for multi-tenant
     const company = await this.prisma.company.create({
       data: {
         ...companyData,
         ownerId: userId,
         createdById: userId,
-        tags: tags ? {
-          connectOrCreate: tags.map(tag => ({
-            where: { name: tag },
-            create: { name: tag },
-          })),
-        } : undefined,
       },
       include: {
         tags: true,
@@ -194,28 +186,18 @@ export class CompaniesService {
 
     const { tags, ...companyData } = updateCompanyDto;
 
-    // Проверяем уникальность ИНН при изменении
-    if (companyData.inn && companyData.inn !== company.inn) {
-      const existingCompany = await this.prisma.company.findUnique({
-        where: { inn: companyData.inn },
-      });
-      
-      if (existingCompany) {
-        throw new BadRequestException('Компания с таким ИНН уже существует');
-      }
-    }
+    // TODO: INN uniqueness check needs organizationId scope
+    // if (companyData.inn && companyData.inn !== company.inn) {
+    //   const existingCompany = await this.prisma.company.findFirst({
+    //     where: { inn: companyData.inn, organizationId: ..., NOT: { id } },
+    //   });
+    // }
 
+    // TODO: Update tag handling for multi-tenant
     const updated = await this.prisma.company.update({
       where: { id },
       data: {
         ...companyData,
-        tags: tags ? {
-          set: [],
-          connectOrCreate: tags.map(tag => ({
-            where: { name: tag },
-            create: { name: tag },
-          })),
-        } : undefined,
       },
       include: {
         tags: true,

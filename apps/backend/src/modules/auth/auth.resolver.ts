@@ -24,6 +24,7 @@ export class AuthResolver {
     @Args('password') password: string,
     @Args('firstName') firstName: string,
     @Args('lastName') lastName: string,
+    @Args('organizationName') organizationName: string,
     @Args('middleName', { nullable: true }) middleName?: string,
     @Args('phone', { nullable: true }) phone?: string,
   ) {
@@ -32,6 +33,7 @@ export class AuthResolver {
       password,
       firstName,
       lastName,
+      organizationName,
       middleName,
       phone,
     });

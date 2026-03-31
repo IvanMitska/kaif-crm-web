@@ -13,10 +13,11 @@ import { InvitationsService } from './invitations.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { OrganizationGuard } from '../auth/guards/organization.guard';
+import { OrgRoles } from '../auth/decorators/org-roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { UserRole, InvitationStatus } from '@prisma/client';
+import { CurrentOrg } from '../auth/decorators/current-org.decorator';
+import { OrgRole, InvitationStatus } from '@prisma/client';
 
 @ApiTags('invitations')
 @Controller('invitations')
@@ -24,28 +25,33 @@ export class InvitationsController {
   constructor(private readonly invitationsService: InvitationsService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @UseGuards(JwtAuthGuard, OrganizationGuard)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Создать приглашение (только админ)' })
-  create(@Body() dto: CreateInvitationDto, @CurrentUser() user: any) {
-    return this.invitationsService.create(dto, user.id);
+  @ApiOperation({ summary: 'Создать приглашение (только админ или владелец)' })
+  create(
+    @Body() dto: CreateInvitationDto,
+    @CurrentUser('id') userId: string,
+    @CurrentOrg() organizationId: string,
+  ) {
+    return this.invitationsService.create(dto, userId, organizationId);
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERVISOR)
+  @UseGuards(JwtAuthGuard, OrganizationGuard)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Список приглашений' })
+  @ApiOperation({ summary: 'Список приглашений организации' })
   @ApiQuery({ name: 'skip', required: false, type: Number })
   @ApiQuery({ name: 'take', required: false, type: Number })
   @ApiQuery({ name: 'status', required: false, enum: InvitationStatus })
   findAll(
+    @CurrentOrg() organizationId: string,
     @Query('skip') skip?: string,
     @Query('take') take?: string,
     @Query('status') status?: InvitationStatus,
   ) {
-    return this.invitationsService.findAll({
+    return this.invitationsService.findAll(organizationId, {
       skip: skip ? parseInt(skip) : undefined,
       take: take ? parseInt(take) : undefined,
       status,
@@ -65,8 +71,8 @@ export class InvitationsController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @UseGuards(JwtAuthGuard, OrganizationGuard)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Отменить приглашение' })
   cancel(@Param('id') id: string) {
@@ -74,8 +80,8 @@ export class InvitationsController {
   }
 
   @Post(':id/resend')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @UseGuards(JwtAuthGuard, OrganizationGuard)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Переотправить приглашение' })
   resend(@Param('id') id: string) {

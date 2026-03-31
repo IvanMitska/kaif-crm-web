@@ -226,4 +226,19 @@ export const invitationsApi = {
   resend: (id: string) => api.post(`/invitations/${id}/resend`),
 };
 
+// Organizations API
+export const organizationsApi = {
+  getCurrent: () => api.get('/organizations/current'),
+  updateCurrent: (data: { name?: string }) => api.patch('/organizations/current', data),
+  getMembers: () => api.get('/organizations/current/members'),
+  getMember: (memberId: string) => api.get(`/organizations/current/members/${memberId}`),
+  updateMemberRole: (memberId: string, role: string) =>
+    api.patch(`/organizations/current/members/${memberId}/role`, { role }),
+  toggleMemberActive: (memberId: string) =>
+    api.patch(`/organizations/current/members/${memberId}/toggle-active`),
+  removeMember: (memberId: string) =>
+    api.delete(`/organizations/current/members/${memberId}`),
+  getMyOrganizations: () => api.get('/organizations/my'),
+};
+
 export default api;

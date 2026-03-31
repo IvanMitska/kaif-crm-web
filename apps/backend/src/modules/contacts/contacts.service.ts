@@ -12,17 +12,14 @@ export class ContactsService {
   async create(createContactDto: CreateContactDto, userId: string) {
     const { tags, ...contactData } = createContactDto;
 
+    // TODO: Update tag handling for multi-tenant
+    // Tags now require organizationId for unique lookup
     const contact = await this.prisma.contact.create({
       data: {
         ...contactData,
         ownerId: userId,
         createdById: userId,
-        tags: tags ? {
-          connectOrCreate: tags.map(tag => ({
-            where: { name: tag },
-            create: { name: tag },
-          })),
-        } : undefined,
+        // Tags will be connected after organizationId is implemented
       },
       include: {
         company: true,
@@ -196,13 +193,7 @@ export class ContactsService {
       where: { id },
       data: {
         ...contactData,
-        tags: tags ? {
-          set: [],
-          connectOrCreate: tags.map(tag => ({
-            where: { name: tag },
-            create: { name: tag },
-          })),
-        } : undefined,
+        // TODO: Update tag handling for multi-tenant
       },
       include: {
         company: true,

@@ -12,17 +12,34 @@ interface User {
   avatar?: string;
 }
 
+interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+interface OrganizationMembership {
+  id: string;
+  organizationId: string;
+  role: 'OWNER' | 'ADMIN' | 'MANAGER' | 'OPERATOR';
+  organization: Organization;
+}
+
 interface AuthState {
   user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  
+  organization: Organization | null;
+  orgRole: 'OWNER' | 'ADMIN' | 'MANAGER' | 'OPERATOR' | null;
+  organizations: OrganizationMembership[];
+
   login: (email: string, password: string, twoFactorCode?: string) => Promise<any>;
   register: (data: any) => Promise<void>;
   logout: () => Promise<void>;
   refreshTokens: () => Promise<void>;
+  switchOrganization: (organizationId: string) => Promise<void>;
   setUser: (user: User | null) => void;
   setTokens: (accessToken: string, refreshToken: string) => void;
 }
@@ -37,6 +54,9 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
+      organization: null,
+      orgRole: null,
+      organizations: [],
 
       login: async (email, password, twoFactorCode) => {
         set({ isLoading: true });
@@ -59,10 +79,13 @@ export const useAuthStore = create<AuthState>()(
             refreshToken: data.refreshToken,
             isAuthenticated: true,
             isLoading: false,
+            organization: data.organization || null,
+            orgRole: data.orgRole || null,
+            organizations: data.organizations || [],
           });
 
           axios.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
-          
+
           return data;
         } catch (error: any) {
           set({ isLoading: false });
@@ -82,6 +105,9 @@ export const useAuthStore = create<AuthState>()(
             refreshToken: result.refreshToken,
             isAuthenticated: true,
             isLoading: false,
+            organization: result.organization || null,
+            orgRole: result.orgRole || null,
+            organizations: result.organizations || [],
           });
 
           axios.defaults.headers.common['Authorization'] = `Bearer ${result.accessToken}`;
@@ -108,6 +134,9 @@ export const useAuthStore = create<AuthState>()(
             accessToken: null,
             refreshToken: null,
             isAuthenticated: false,
+            organization: null,
+            orgRole: null,
+            organizations: [],
           });
           delete axios.defaults.headers.common['Authorization'];
         }
@@ -132,6 +161,9 @@ export const useAuthStore = create<AuthState>()(
             accessToken: data.accessToken,
             refreshToken: data.refreshToken,
             isAuthenticated: true,
+            organization: data.organization || null,
+            orgRole: data.orgRole || null,
+            organizations: data.organizations || [],
           });
 
           axios.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
@@ -141,8 +173,39 @@ export const useAuthStore = create<AuthState>()(
             accessToken: null,
             refreshToken: null,
             isAuthenticated: false,
+            organization: null,
+            orgRole: null,
+            organizations: [],
           });
           delete axios.defaults.headers.common['Authorization'];
+          throw error;
+        }
+      },
+
+      switchOrganization: async (organizationId: string) => {
+        const { refreshToken } = get();
+
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+
+        try {
+          const response = await axios.post(`${API_URL}/api/auth/switch-organization`, {
+            organizationId,
+            refreshToken,
+          });
+
+          const data = response.data;
+
+          set({
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken,
+            organization: data.organization || null,
+            orgRole: data.orgRole || null,
+          });
+
+          axios.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
+        } catch (error) {
           throw error;
         }
       },
@@ -160,6 +223,9 @@ export const useAuthStore = create<AuthState>()(
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
+        organization: state.organization,
+        orgRole: state.orgRole,
+        organizations: state.organizations,
       }),
     }
   )

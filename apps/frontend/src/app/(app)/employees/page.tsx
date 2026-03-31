@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
-  Plus,
   Search,
   Users,
   Phone,
@@ -14,7 +13,6 @@ import {
   Square,
   Minus,
   Eye,
-  Pencil,
   Trash2,
   ChevronUp,
   ChevronDown,
@@ -22,10 +20,6 @@ import {
   Shield,
   ShieldCheck,
   Clock,
-  Smartphone,
-  Monitor,
-  MessageSquare,
-  Building2,
   UserCog,
   Crown,
   BadgeCheck,
@@ -35,17 +29,36 @@ import {
   UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { usersApi, invitationsApi } from "@/lib/api";
+import { organizationsApi, invitationsApi } from "@/lib/api";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
-interface Employee {
+interface OrgMember {
   id: string;
+  role: "OWNER" | "ADMIN" | "MANAGER" | "OPERATOR";
+  isActive: boolean;
+  joinedAt: string;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    avatar?: string;
+    lastLoginAt?: string;
+    createdAt: string;
+  };
+}
+
+// Flattened employee for UI
+interface Employee {
+  id: string; // OrgMember id
+  odataname: string;
   firstName: string;
   lastName: string;
   email: string;
   phone?: string;
   avatar?: string;
-  role: "ADMIN" | "SUPERVISOR" | "MANAGER" | "OPERATOR";
+  role: "OWNER" | "ADMIN" | "MANAGER" | "OPERATOR";
   isActive: boolean;
   lastLoginAt?: string;
   lastActivityAt?: string;
@@ -54,15 +67,10 @@ interface Employee {
 }
 
 const roleConfig: Record<string, { label: string; color: string; bgColor: string; icon: any }> = {
-  ADMIN: { label: "Администратор", color: "text-red-400", bgColor: "bg-red-500/20", icon: Crown },
-  SUPERVISOR: { label: "Супервайзер", color: "text-purple-400", bgColor: "bg-purple-500/20", icon: ShieldCheck },
+  OWNER: { label: "Владелец", color: "text-yellow-400", bgColor: "bg-yellow-500/20", icon: Crown },
+  ADMIN: { label: "Администратор", color: "text-red-400", bgColor: "bg-red-500/20", icon: ShieldCheck },
   MANAGER: { label: "Менеджер", color: "text-violet-400", bgColor: "bg-violet-500/20", icon: BadgeCheck },
   OPERATOR: { label: "Оператор", color: "text-green-400", bgColor: "bg-green-500/20", icon: Shield },
-};
-
-const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
-  active: { label: "Активен", color: "text-green-400", bgColor: "bg-green-500/20" },
-  inactive: { label: "Неактивен", color: "text-gray-400", bgColor: "bg-white/10" },
 };
 
 export default function EmployeesPage() {
@@ -91,19 +99,28 @@ export default function EmployeesPage() {
     try {
       setLoading(true);
       setError(null);
-      const [usersResponse, onlineResponse] = await Promise.all([
-        usersApi.getAll(),
-        usersApi.getOnline(),
-      ]);
+      const membersResponse = await organizationsApi.getMembers();
       // Safely extract data - handle different response formats
-      const usersData = usersResponse?.data?.data || usersResponse?.data || [];
-      const onlineData = onlineResponse?.data?.data || onlineResponse?.data || [];
+      const membersData: OrgMember[] = membersResponse?.data?.data || membersResponse?.data || [];
 
-      setEmployees(Array.isArray(usersData) ? usersData : []);
-      const onlineIds = new Set<string>(
-        Array.isArray(onlineData) ? onlineData.map((u: any) => u.id) : []
-      );
-      setOnlineUserIds(onlineIds);
+      // Transform OrgMember to Employee format for UI compatibility
+      const employees: Employee[] = (Array.isArray(membersData) ? membersData : []).map((member: OrgMember) => ({
+        id: member.id,
+        odataname: member.user.id,
+        firstName: member.user.firstName,
+        lastName: member.user.lastName,
+        email: member.user.email,
+        phone: member.user.phone,
+        avatar: member.user.avatar,
+        role: member.role,
+        isActive: member.isActive,
+        lastLoginAt: member.user.lastLoginAt,
+        createdAt: member.joinedAt || member.user.createdAt,
+      }));
+
+      setEmployees(employees);
+      // Online status tracking can be added later if needed
+      setOnlineUserIds(new Set());
     } catch (err: any) {
       setError(err.response?.data?.message || "Ошибка загрузки сотрудников");
       setEmployees([]);
@@ -116,22 +133,7 @@ export default function EmployeesPage() {
     fetchEmployees();
   }, [fetchEmployees]);
 
-  // Refresh online status every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const response = await usersApi.getOnline();
-        const onlineData = response?.data?.data || response?.data || [];
-        const onlineIds = new Set<string>(
-          Array.isArray(onlineData) ? onlineData.map((u: any) => u.id) : []
-        );
-        setOnlineUserIds(onlineIds);
-      } catch (err) {
-        // Silently fail for polling
-      }
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  // Online status tracking removed for multi-tenant - can be added via WebSocket later
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -145,7 +147,7 @@ export default function EmployeesPage() {
 
   const handleToggleActive = async (employee: Employee) => {
     try {
-      await usersApi.toggleActive(employee.id);
+      await organizationsApi.toggleMemberActive(employee.id);
       setEmployees(employees.map(e =>
         e.id === employee.id ? { ...e, isActive: !e.isActive } : e
       ));
@@ -157,7 +159,7 @@ export default function EmployeesPage() {
 
   const handleChangeRole = async (employee: Employee, newRole: string) => {
     try {
-      await usersApi.updateRole(employee.id, newRole);
+      await organizationsApi.updateMemberRole(employee.id, newRole);
       setEmployees(employees.map(e =>
         e.id === employee.id ? { ...e, role: newRole as Employee["role"] } : e
       ));
@@ -170,7 +172,7 @@ export default function EmployeesPage() {
 
   const handleDelete = async (employee: Employee) => {
     try {
-      await usersApi.delete(employee.id);
+      await organizationsApi.removeMember(employee.id);
       setEmployees(employees.filter(e => e.id !== employee.id));
       setConfirmDelete(null);
       setSelectedEmployee(null);
@@ -275,7 +277,7 @@ export default function EmployeesPage() {
 
   const totalEmployees = employees.length;
   const activeEmployees = employees.filter((e) => e.isActive).length;
-  const admins = employees.filter((e) => e.role === "ADMIN").length;
+  const adminsAndOwners = employees.filter((e) => e.role === "ADMIN" || e.role === "OWNER").length;
   const onlineCount = onlineUserIds.size;
 
   const isAllSelected = filteredEmployees.length > 0 && selectedEmployees.size === filteredEmployees.length;
@@ -337,10 +339,10 @@ export default function EmployeesPage() {
                 <span className="text-sm text-violet-400">Активных</span>
                 <span className="text-sm font-bold text-violet-400">{activeEmployees}</span>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 rounded-lg">
-                <Crown className="w-4 h-4 text-red-400" />
-                <span className="text-sm text-red-400">Админов</span>
-                <span className="text-sm font-bold text-red-400">{admins}</span>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500/20 rounded-lg">
+                <Crown className="w-4 h-4 text-yellow-400" />
+                <span className="text-sm text-yellow-400">Админов</span>
+                <span className="text-sm font-bold text-yellow-400">{adminsAndOwners}</span>
               </div>
             </div>
           </div>
@@ -365,8 +367,8 @@ export default function EmployeesPage() {
               className="px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10"
             >
               <option value="all">Все роли</option>
+              <option value="OWNER">Владельцы</option>
               <option value="ADMIN">Администраторы</option>
-              <option value="SUPERVISOR">Супервайзеры</option>
               <option value="MANAGER">Менеджеры</option>
               <option value="OPERATOR">Операторы</option>
             </select>
@@ -998,7 +1000,7 @@ export default function EmployeesPage() {
                     >
                       <option value="OPERATOR">Оператор</option>
                       <option value="MANAGER">Менеджер</option>
-                      <option value="SUPERVISOR">Супервайзер</option>
+                      <option value="ADMIN">Администратор</option>
                     </select>
                   </div>
                 </div>
@@ -1045,26 +1047,34 @@ export default function EmployeesPage() {
                   <p className="text-sm text-gray-400 mb-4">
                     Изменить роль для {roleChangeEmployee.firstName} {roleChangeEmployee.lastName}
                   </p>
-                  <div className="space-y-2">
-                    {Object.entries(roleConfig).map(([key, config]) => (
-                      <button
-                        key={key}
-                        onClick={() => handleChangeRole(roleChangeEmployee, key)}
-                        className={cn(
-                          "w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors",
-                          roleChangeEmployee.role === key
-                            ? "border-violet-500 bg-violet-500/10"
-                            : "border-white/10 hover:border-white/20 hover:bg-white/5"
-                        )}
-                      >
-                        <config.icon className={cn("w-5 h-5", config.color)} />
-                        <span className="text-white font-medium">{config.label}</span>
-                        {roleChangeEmployee.role === key && (
-                          <span className="ml-auto text-xs text-violet-400">Текущая</span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
+                  {roleChangeEmployee.role === "OWNER" ? (
+                    <p className="text-sm text-yellow-400">
+                      Роль владельца нельзя изменить. Владелец может передать права только через настройки организации.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {Object.entries(roleConfig)
+                        .filter(([key]) => key !== "OWNER") // Can't assign OWNER role
+                        .map(([key, config]) => (
+                          <button
+                            key={key}
+                            onClick={() => handleChangeRole(roleChangeEmployee, key)}
+                            className={cn(
+                              "w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors",
+                              roleChangeEmployee.role === key
+                                ? "border-violet-500 bg-violet-500/10"
+                                : "border-white/10 hover:border-white/20 hover:bg-white/5"
+                            )}
+                          >
+                            <config.icon className={cn("w-5 h-5", config.color)} />
+                            <span className="text-white font-medium">{config.label}</span>
+                            {roleChangeEmployee.role === key && (
+                              <span className="ml-auto text-xs text-violet-400">Текущая</span>
+                            )}
+                          </button>
+                        ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

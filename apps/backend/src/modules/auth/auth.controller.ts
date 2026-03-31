@@ -108,4 +108,18 @@ export class AuthController {
   ) {
     return this.authService.disable2FA(user.id, verify2FADto);
   }
+
+  @Post('switch-organization')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Переключить организацию' })
+  @ApiResponse({ status: 200, description: 'Организация переключена' })
+  @ApiResponse({ status: 400, description: 'Не являетесь участником организации' })
+  async switchOrganization(
+    @CurrentUser() user: any,
+    @Body('organizationId') organizationId: string,
+  ) {
+    return this.authService.switchOrganization(user.id, organizationId);
+  }
 }

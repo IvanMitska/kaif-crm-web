@@ -20,7 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Icons } from "@/components/icons";
 import { useAuthStore } from "@/store/auth";
-import { Mail, Lock, User, Phone } from "lucide-react";
+import { Mail, Lock, User, Phone, Building2 } from "lucide-react";
 
 const registerSchema = z.object({
   email: z.string().email("Некорректный email"),
@@ -29,6 +29,7 @@ const registerSchema = z.object({
   firstName: z.string().min(1, "Введите имя"),
   lastName: z.string().min(1, "Введите фамилию"),
   phone: z.string().optional(),
+  organizationName: z.string().min(1, "Введите название компании"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Пароли не совпадают",
   path: ["confirmPassword"],
@@ -50,6 +51,7 @@ export default function RegisterPage() {
       firstName: "",
       lastName: "",
       phone: "",
+      organizationName: "",
     },
   });
 
@@ -63,9 +65,10 @@ export default function RegisterPage() {
         firstName: data.firstName,
         lastName: data.lastName,
         phone: data.phone || undefined,
+        organizationName: data.organizationName,
       });
 
-      toast.success("Регистрация успешна!");
+      toast.success("Регистрация успешна! Ваш кабинет создан.");
       router.push("/dashboard");
     } catch (error: any) {
       toast.error(error.message || "Ошибка регистрации");
@@ -151,6 +154,34 @@ export default function RegisterPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
+          >
+            <FormField
+              control={form.control}
+              name="organizationName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-gray-300 text-sm font-medium">Название компании</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                      <Input
+                        placeholder="ООО Моя компания"
+                        disabled={isLoading}
+                        className="pl-12 h-11 bg-white/5 border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:border-violet-500 focus:ring-violet-500/20 transition-all"
+                        {...field}
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage className="text-red-400 text-xs" />
+                </FormItem>
+              )}
+            />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
           >
             <FormField
               control={form.control}
