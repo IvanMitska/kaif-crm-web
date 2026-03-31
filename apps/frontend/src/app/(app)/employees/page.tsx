@@ -95,11 +95,18 @@ export default function EmployeesPage() {
         usersApi.getAll(),
         usersApi.getOnline(),
       ]);
-      setEmployees(usersResponse.data.data || []);
-      const onlineIds = new Set<string>((onlineResponse.data.data || []).map((u: any) => u.id));
+      // Safely extract data - handle different response formats
+      const usersData = usersResponse?.data?.data || usersResponse?.data || [];
+      const onlineData = onlineResponse?.data?.data || onlineResponse?.data || [];
+
+      setEmployees(Array.isArray(usersData) ? usersData : []);
+      const onlineIds = new Set<string>(
+        Array.isArray(onlineData) ? onlineData.map((u: any) => u.id) : []
+      );
       setOnlineUserIds(onlineIds);
     } catch (err: any) {
       setError(err.response?.data?.message || "Ошибка загрузки сотрудников");
+      setEmployees([]);
     } finally {
       setLoading(false);
     }
@@ -114,7 +121,10 @@ export default function EmployeesPage() {
     const interval = setInterval(async () => {
       try {
         const response = await usersApi.getOnline();
-        const onlineIds = new Set<string>((response.data.data || []).map((u: any) => u.id));
+        const onlineData = response?.data?.data || response?.data || [];
+        const onlineIds = new Set<string>(
+          Array.isArray(onlineData) ? onlineData.map((u: any) => u.id) : []
+        );
         setOnlineUserIds(onlineIds);
       } catch (err) {
         // Silently fail for polling
