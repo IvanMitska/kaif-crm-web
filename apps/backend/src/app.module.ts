@@ -17,6 +17,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { LeadsModule } from './modules/leads/leads.module';
 import { InvitationsModule } from './modules/invitations/invitations.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
+import { EmailModule } from './modules/email/email.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { OrganizationsModule } from './modules/organizations/organizations.modul
 
     // Core modules
     PrismaModule,
+    EmailModule,
     HealthModule,
     AuthModule,
     UsersModule,

@@ -20,7 +20,6 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "prisma": "^5.16.1",
     "@apollo/server": "^4.10.4",
     "@nestjs/apollo": "^12.1.0",
     "@nestjs/bull": "^10.1.1",
@@ -53,7 +52,9 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
+    "prisma": "^5.16.1",
     "reflect-metadata": "^0.2.2",
+    "resend": "^6.10.0",
     "rxjs": "^7.8.1",
     "socket.io": "^4.7.5",
     "swagger-ui-express": "^5.0.1",

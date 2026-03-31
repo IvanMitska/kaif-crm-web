@@ -1,5 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../email/email.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { OrgRole, InvitationStatus } from '@prisma/client';
@@ -8,8 +10,15 @@ import * as argon2 from 'argon2';
 @Injectable()
 export class InvitationsService {
   private readonly logger = new Logger(InvitationsService.name);
+  private frontendUrl: string;
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private emailService: EmailService,
+    private configService: ConfigService,
+  ) {
+    this.frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+  }
 
   async create(dto: CreateInvitationDto, invitedById: string, organizationId: string) {
     // Check if user is already a member of this organization
@@ -64,22 +73,21 @@ export class InvitationsService {
       },
     });
 
-    // Log invitation link (in production, send email)
-    const inviteUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/invite/${invitation.token}`;
-    this.logger.log(`
-========== INVITATION EMAIL ==========
-To: ${invitation.email}
-From: ${invitation.invitedBy.firstName} ${invitation.invitedBy.lastName}
-Organization: ${invitation.organization?.name}
-Role: ${invitation.role}
-Link: ${inviteUrl}
-Expires: ${invitation.expiresAt}
-=======================================
-    `);
+    // Send invitation email
+    const inviteUrl = `${this.frontendUrl}/invite/${invitation.token}`;
+
+    await this.emailService.sendInvitationEmail({
+      to: invitation.email,
+      inviterName: `${invitation.invitedBy.firstName} ${invitation.invitedBy.lastName}`,
+      organizationName: invitation.organization?.name || 'KAIF CRM',
+      role: invitation.role,
+      inviteUrl,
+      expiresAt: invitation.expiresAt,
+    });
 
     return {
       ...invitation,
-      inviteUrl, // Include for development/testing
+      inviteUrl,
     };
   }
 
@@ -288,17 +296,24 @@ Expires: ${invitation.expiresAt}
     const updated = await this.prisma.invitation.update({
       where: { id },
       data: { expiresAt },
+      include: {
+        organization: {
+          select: { name: true },
+        },
+      },
     });
 
-    // Log invitation link again
-    const inviteUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/invite/${invitation.token}`;
-    this.logger.log(`
-========== RESENT INVITATION ==========
-To: ${invitation.email}
-Link: ${inviteUrl}
-New Expires: ${expiresAt}
-=======================================
-    `);
+    // Resend invitation email
+    const inviteUrl = `${this.frontendUrl}/invite/${invitation.token}`;
+
+    await this.emailService.sendInvitationEmail({
+      to: invitation.email,
+      inviterName: `${invitation.invitedBy.firstName} ${invitation.invitedBy.lastName}`,
+      organizationName: updated.organization?.name || 'KAIF CRM',
+      role: invitation.role,
+      inviteUrl,
+      expiresAt,
+    });
 
     return { ...updated, inviteUrl };
   }
