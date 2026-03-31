@@ -5,4 +5,4 @@ cmds = ["npm install -g corepack@0.24.1 && corepack enable && pnpm install --no-
 cmds = ["pnpm run build"]
 
 [start]
-cmd = "cd apps/backend && npx prisma db push --skip-generate --accept-data-loss && npx prisma migrate resolve --applied 20250831101920_init || true && npx prisma migrate resolve --applied 20250331150000_add_multitenant || true && node dist/main.js"
+cmd = "cd apps/backend && echo '=== Running Prisma DB Push ===' && npx prisma db push --skip-generate --accept-data-loss 2>&1 && echo '=== DB Push Complete ===' && node dist/main.js"
