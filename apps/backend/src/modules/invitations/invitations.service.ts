@@ -39,16 +39,50 @@ export class InvitationsService {
       }
     }
 
-    // Check for pending invitation to this organization
+    // Check for pending invitation to this organization - resend if exists
     const existingInvitation = await this.prisma.invitation.findFirst({
       where: {
         email: dto.email,
         organizationId,
         status: InvitationStatus.PENDING,
       },
+      include: {
+        invitedBy: {
+          select: { firstName: true, lastName: true, email: true },
+        },
+        organization: {
+          select: { name: true },
+        },
+      },
     });
+
     if (existingInvitation) {
-      throw new BadRequestException('Приглашение уже отправлено на этот email');
+      // Update expiration and resend
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      await this.prisma.invitation.update({
+        where: { id: existingInvitation.id },
+        data: { expiresAt },
+      });
+
+      const inviteUrl = `${this.frontendUrl}/invite/${existingInvitation.token}`;
+
+      await this.emailService.sendInvitationEmail({
+        to: existingInvitation.email,
+        inviterName: `${existingInvitation.invitedBy.firstName} ${existingInvitation.invitedBy.lastName}`,
+        organizationName: existingInvitation.organization?.name || 'KAIF CRM',
+        role: existingInvitation.role,
+        inviteUrl,
+        expiresAt,
+      });
+
+      return {
+        ...existingInvitation,
+        expiresAt,
+        inviteUrl,
+        resent: true,
+      };
     }
 
     // Create invitation with 7-day expiry
