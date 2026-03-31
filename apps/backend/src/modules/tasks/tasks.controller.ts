@@ -16,12 +16,13 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { TasksFilterDto } from './dto/tasks-filter.dto';
 import { CalendarFilterDto } from './dto/calendar-filter.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { OrganizationGuard } from '../auth/guards/organization.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CurrentOrg } from '../auth/decorators/current-org.decorator';
 
 @ApiTags('tasks')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, OrganizationGuard)
 @Controller('tasks')
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
@@ -32,8 +33,9 @@ export class TasksController {
   create(
     @Body() createTaskDto: CreateTaskDto,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.tasksService.create(createTaskDto, user.id);
+    return this.tasksService.create(createTaskDto, user.id, organizationId);
   }
 
   @Post('recurring')
@@ -43,8 +45,9 @@ export class TasksController {
     @Body() createTaskDto: CreateTaskDto,
     @Body('pattern') pattern: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.tasksService.createRecurringTask(createTaskDto, pattern, user.id);
+    return this.tasksService.createRecurringTask(createTaskDto, pattern, user.id, organizationId);
   }
 
   @Get()
@@ -52,9 +55,9 @@ export class TasksController {
   @ApiResponse({ status: 200, description: 'Список задач' })
   findAll(
     @Query() filter: TasksFilterDto,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.tasksService.findAll(filter, user.id, user.role);
+    return this.tasksService.findAll(filter, organizationId);
   }
 
   @Get('calendar')
@@ -62,16 +65,18 @@ export class TasksController {
   @ApiResponse({ status: 200, description: 'Задачи для календаря' })
   getCalendarTasks(
     @Query() filter: CalendarFilterDto,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.tasksService.getCalendarTasks(filter, user.id, user.role);
+    return this.tasksService.getCalendarTasks(filter, organizationId);
   }
 
   @Get('stats')
   @ApiOperation({ summary: 'Получить статистику по задачам' })
   @ApiResponse({ status: 200, description: 'Статистика задач' })
-  getTaskStats(@CurrentUser() user: any) {
-    return this.tasksService.getTaskStats(user.id, user.role);
+  getTaskStats(
+    @CurrentOrg() organizationId: string,
+  ) {
+    return this.tasksService.getTaskStats(organizationId);
   }
 
   @Get(':id')
@@ -80,9 +85,9 @@ export class TasksController {
   @ApiResponse({ status: 404, description: 'Задача не найдена' })
   findOne(
     @Param('id') id: string,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.tasksService.findOne(id, user.id, user.role);
+    return this.tasksService.findOne(id, organizationId);
   }
 
   @Patch(':id')
@@ -93,8 +98,9 @@ export class TasksController {
     @Param('id') id: string,
     @Body() updateTaskDto: UpdateTaskDto,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.tasksService.update(id, updateTaskDto, user.id, user.role);
+    return this.tasksService.update(id, updateTaskDto, user.id, organizationId);
   }
 
   @Post(':id/complete')
@@ -102,9 +108,9 @@ export class TasksController {
   @ApiResponse({ status: 200, description: 'Задача выполнена' })
   completeTask(
     @Param('id') id: string,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.tasksService.completeTask(id, user.id, user.role);
+    return this.tasksService.completeTask(id, organizationId);
   }
 
   @Delete(':id')
@@ -113,8 +119,8 @@ export class TasksController {
   @ApiResponse({ status: 404, description: 'Задача не найдена' })
   remove(
     @Param('id') id: string,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.tasksService.remove(id, user.id, user.role);
+    return this.tasksService.remove(id, organizationId);
   }
 }

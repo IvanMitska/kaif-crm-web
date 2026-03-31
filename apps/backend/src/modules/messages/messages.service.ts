@@ -7,9 +7,12 @@ import { UpdateMessageDto } from './dto/update-message.dto';
 export class MessagesService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createMessageDto: CreateMessageDto) {
+  async create(createMessageDto: CreateMessageDto, organizationId: string) {
     return this.prisma.message.create({
-      data: createMessageDto,
+      data: {
+        ...createMessageDto,
+        organizationId,
+      },
       include: {
         contact: true,
         user: true,
@@ -17,9 +20,12 @@ export class MessagesService {
     });
   }
 
-  async findAll(filters: any = {}) {
+  async findAll(filters: any = {}, organizationId: string) {
     return this.prisma.message.findMany({
-      where: filters,
+      where: {
+        ...filters,
+        organizationId,
+      },
       include: {
         contact: true,
         user: true,
@@ -30,9 +36,9 @@ export class MessagesService {
     });
   }
 
-  async findOne(id: string) {
-    return this.prisma.message.findUnique({
-      where: { id },
+  async findOne(id: string, organizationId: string) {
+    return this.prisma.message.findFirst({
+      where: { id, organizationId },
       include: {
         contact: true,
         user: true,
@@ -40,7 +46,7 @@ export class MessagesService {
     });
   }
 
-  async update(id: string, updateMessageDto: UpdateMessageDto) {
+  async update(id: string, updateMessageDto: UpdateMessageDto, organizationId: string) {
     return this.prisma.message.update({
       where: { id },
       data: updateMessageDto,
@@ -51,14 +57,14 @@ export class MessagesService {
     });
   }
 
-  async markAsRead(id: string) {
+  async markAsRead(id: string, organizationId: string) {
     return this.prisma.message.update({
       where: { id },
       data: { isRead: true },
     });
   }
 
-  async remove(id: string) {
+  async remove(id: string, organizationId: string) {
     return this.prisma.message.delete({
       where: { id },
     });

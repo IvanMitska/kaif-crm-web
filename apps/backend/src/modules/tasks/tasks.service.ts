@@ -11,12 +11,13 @@ import { addDays, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, en
 export class TasksService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createTaskDto: CreateTaskDto, userId: string) {
+  async create(createTaskDto: CreateTaskDto, userId: string, organizationId: string) {
     const task = await this.prisma.task.create({
       data: {
         ...createTaskDto,
         assigneeId: createTaskDto.assigneeId || userId,
         createdById: userId,
+        organizationId,
       },
       include: {
         assignee: {
@@ -71,7 +72,7 @@ export class TasksService {
     return task;
   }
 
-  async findAll(filter: TasksFilterDto, userId: string, userRole: string) {
+  async findAll(filter: TasksFilterDto, organizationId: string) {
     const {
       skip = 0,
       take = 20,
@@ -89,9 +90,7 @@ export class TasksService {
     } = filter;
 
     const where: Prisma.TaskWhereInput = {
-      ...(userRole !== 'ADMIN' && userRole !== 'SUPERVISOR' 
-        ? { assigneeId: userId } 
-        : {}),
+      organizationId,
       ...(search ? {
         OR: [
           { title: { contains: search, mode: 'insensitive' } },
@@ -159,13 +158,11 @@ export class TasksService {
     };
   }
 
-  async findOne(id: string, userId: string, userRole: string) {
-    const task = await this.prisma.task.findUnique({
-      where: { 
+  async findOne(id: string, organizationId: string) {
+    const task = await this.prisma.task.findFirst({
+      where: {
         id,
-        ...(userRole !== 'ADMIN' && userRole !== 'SUPERVISOR' 
-          ? { assigneeId: userId } 
-          : {}),
+        organizationId,
       },
       include: {
         assignee: {
@@ -211,8 +208,8 @@ export class TasksService {
     return task;
   }
 
-  async update(id: string, updateTaskDto: UpdateTaskDto, userId: string, userRole: string) {
-    const task = await this.findOne(id, userId, userRole);
+  async update(id: string, updateTaskDto: UpdateTaskDto, userId: string, organizationId: string) {
+    const task = await this.findOne(id, organizationId);
 
     const oldAssigneeId = task.assigneeId;
     const oldStatus = task.status;
@@ -280,8 +277,8 @@ export class TasksService {
     return updated;
   }
 
-  async remove(id: string, userId: string, userRole: string) {
-    await this.findOne(id, userId, userRole);
+  async remove(id: string, organizationId: string) {
+    await this.findOne(id, organizationId);
 
     await this.prisma.task.delete({
       where: { id },
@@ -290,19 +287,36 @@ export class TasksService {
     return { message: 'Задача успешно удалена' };
   }
 
-  async completeTask(id: string, userId: string, userRole: string) {
-    return this.update(
-      id,
-      { 
+  async completeTask(id: string, organizationId: string) {
+    const task = await this.findOne(id, organizationId);
+
+    return this.prisma.task.update({
+      where: { id },
+      data: {
         status: TaskStatus.COMPLETED,
         completedAt: new Date(),
       },
-      userId,
-      userRole
-    );
+      include: {
+        assignee: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+          },
+        },
+        contact: true,
+        deal: {
+          include: {
+            stage: true,
+          },
+        },
+      },
+    });
   }
 
-  async getCalendarTasks(filter: CalendarFilterDto, userId: string, userRole: string) {
+  async getCalendarTasks(filter: CalendarFilterDto, organizationId: string) {
     const { view = 'month', date = new Date().toISOString() } = filter;
 
     let startDate: Date;
@@ -328,9 +342,7 @@ export class TasksService {
 
     const tasks = await this.prisma.task.findMany({
       where: {
-        ...(userRole !== 'ADMIN' && userRole !== 'SUPERVISOR' 
-          ? { assigneeId: userId } 
-          : {}),
+        organizationId,
         dueDate: {
           gte: startDate,
           lte: endDate,
@@ -385,10 +397,8 @@ export class TasksService {
     };
   }
 
-  async getTaskStats(userId: string, userRole: string) {
-    const where = userRole !== 'ADMIN' && userRole !== 'SUPERVISOR' 
-      ? { assigneeId: userId } 
-      : {};
+  async getTaskStats(organizationId: string) {
+    const where = { organizationId };
 
     const [
       totalTasks,
@@ -471,14 +481,14 @@ export class TasksService {
     };
   }
 
-  async createRecurringTask(createTaskDto: CreateTaskDto, pattern: string, userId: string) {
+  async createRecurringTask(createTaskDto: CreateTaskDto, pattern: string, userId: string, organizationId: string) {
     // Паттерн: daily, weekly, monthly
     const tasks = [];
     const baseTask = { ...createTaskDto };
-    
+
     for (let i = 0; i < 12; i++) {
       let dueDate = baseTask.dueDate ? new Date(baseTask.dueDate) : new Date();
-      
+
       switch (pattern) {
         case 'daily':
           dueDate = addDays(dueDate, i);
@@ -497,7 +507,8 @@ export class TasksService {
           title: `${baseTask.title} - ${i + 1}`,
           dueDate: dueDate.toISOString(),
         },
-        userId
+        userId,
+        organizationId
       );
       
       tasks.push(task);

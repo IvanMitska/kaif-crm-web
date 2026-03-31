@@ -9,12 +9,13 @@ import { LeadsFilterDto } from './dto/leads-filter.dto';
 export class LeadsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createLeadDto: CreateLeadDto, userId: string) {
+  async create(createLeadDto: CreateLeadDto, userId: string, organizationId: string) {
     const lead = await this.prisma.lead.create({
       data: {
         ...createLeadDto,
         createdById: userId,
         ownerId: userId,
+        organizationId,
       },
       include: {
         owner: {
@@ -39,7 +40,7 @@ export class LeadsService {
     return lead;
   }
 
-  async findAll(filter: LeadsFilterDto, userId: string, userRole: string) {
+  async findAll(filter: LeadsFilterDto, organizationId: string) {
     const {
       skip = 0,
       take = 20,
@@ -51,7 +52,7 @@ export class LeadsService {
     } = filter;
 
     const where: Prisma.LeadWhereInput = {
-      ...(userRole !== 'ADMIN' ? { ownerId: userId } : {}),
+      organizationId,
       ...(search ? {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
@@ -94,11 +95,11 @@ export class LeadsService {
     };
   }
 
-  async findOne(id: string, userId: string, userRole: string) {
-    const lead = await this.prisma.lead.findUnique({
+  async findOne(id: string, organizationId: string) {
+    const lead = await this.prisma.lead.findFirst({
       where: {
         id,
-        ...(userRole !== 'ADMIN' ? { ownerId: userId } : {}),
+        organizationId,
       },
       include: {
         owner: {
@@ -128,8 +129,8 @@ export class LeadsService {
     return lead;
   }
 
-  async update(id: string, updateLeadDto: UpdateLeadDto, userId: string, userRole: string) {
-    await this.findOne(id, userId, userRole);
+  async update(id: string, updateLeadDto: UpdateLeadDto, organizationId: string) {
+    await this.findOne(id, organizationId);
 
     const updated = await this.prisma.lead.update({
       where: { id },
@@ -149,8 +150,8 @@ export class LeadsService {
     return updated;
   }
 
-  async remove(id: string, userId: string, userRole: string) {
-    await this.findOne(id, userId, userRole);
+  async remove(id: string, organizationId: string) {
+    await this.findOne(id, organizationId);
 
     await this.prisma.lead.delete({
       where: { id },
@@ -159,8 +160,8 @@ export class LeadsService {
     return { message: 'Лид успешно удален' };
   }
 
-  async convert(id: string, data: any, userId: string, userRole: string) {
-    const lead = await this.findOne(id, userId, userRole);
+  async convert(id: string, data: any, userId: string, organizationId: string) {
+    const lead = await this.findOne(id, organizationId);
 
     // Create a contact from the lead
     const contact = await this.prisma.contact.create({
@@ -173,6 +174,7 @@ export class LeadsService {
         source: lead.source as any,
         ownerId: userId,
         createdById: userId,
+        organizationId,
         companyId: data?.companyId,
       },
     });
@@ -198,6 +200,7 @@ export class LeadsService {
           companyId: data.companyId,
           ownerId: userId,
           createdById: userId,
+          organizationId,
         },
       });
     }
@@ -209,8 +212,8 @@ export class LeadsService {
     };
   }
 
-  async getStats(userId: string, userRole: string) {
-    const where = userRole !== 'ADMIN' ? { ownerId: userId } : {};
+  async getStats(organizationId: string) {
+    const where = { organizationId };
 
     const [total, byStatus, bySource] = await Promise.all([
       this.prisma.lead.count({ where }),

@@ -7,41 +7,45 @@ import { UpdateAutomationDto } from './dto/update-automation.dto';
 export class AutomationService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createAutomationDto: CreateAutomationDto) {
+  async create(createAutomationDto: CreateAutomationDto, organizationId: string) {
     return this.prisma.automation.create({
-      data: createAutomationDto,
+      data: {
+        ...createAutomationDto,
+        organizationId,
+      },
     });
   }
 
-  async findAll() {
+  async findAll(organizationId: string) {
     return this.prisma.automation.findMany({
+      where: { organizationId },
       orderBy: {
         createdAt: 'desc',
       },
     });
   }
 
-  async findOne(id: string) {
-    return this.prisma.automation.findUnique({
-      where: { id },
+  async findOne(id: string, organizationId: string) {
+    return this.prisma.automation.findFirst({
+      where: { id, organizationId },
     });
   }
 
-  async update(id: string, updateAutomationDto: UpdateAutomationDto) {
+  async update(id: string, updateAutomationDto: UpdateAutomationDto, organizationId: string) {
     return this.prisma.automation.update({
       where: { id },
       data: updateAutomationDto,
     });
   }
 
-  async remove(id: string) {
+  async remove(id: string, organizationId: string) {
     return this.prisma.automation.delete({
       where: { id },
     });
   }
 
-  async execute(id: string) {
-    const automation = await this.findOne(id);
+  async execute(id: string, organizationId: string) {
+    const automation = await this.findOne(id, organizationId);
     if (!automation || !automation.isActive) {
       throw new Error('Automation not found or inactive');
     }
@@ -60,10 +64,11 @@ export class AutomationService {
     };
   }
 
-  async getActiveAutomations() {
+  async getActiveAutomations(organizationId: string) {
     return this.prisma.automation.findMany({
       where: {
         isActive: true,
+        organizationId,
       },
     });
   }

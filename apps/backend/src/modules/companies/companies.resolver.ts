@@ -3,6 +3,7 @@ import { UseGuards } from '@nestjs/common';
 import { CompaniesService } from './companies.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CurrentOrg } from '../auth/decorators/current-org.decorator';
 
 @Resolver('Company')
 @UseGuards(JwtAuthGuard)
@@ -15,11 +16,11 @@ export class CompaniesResolver {
     @Args('take', { type: () => Int, nullable: true }) take?: number,
     @Args('search', { nullable: true }) search?: string,
     @CurrentUser() user?: any,
+    @CurrentOrg() organizationId?: string,
   ) {
     const result = await this.companiesService.findAll(
       { skip, take, search },
-      user.id,
-      user.role,
+      organizationId,
     );
     return JSON.stringify(result);
   }
@@ -28,8 +29,9 @@ export class CompaniesResolver {
   async company(
     @Args('id') id: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    const result = await this.companiesService.findOne(id, user.id, user.role);
+    const result = await this.companiesService.findOne(id, organizationId);
     return JSON.stringify(result);
   }
 
@@ -41,10 +43,12 @@ export class CompaniesResolver {
     @Args('phone', { nullable: true }) phone?: string,
     @Args('website', { nullable: true }) website?: string,
     @CurrentUser() user?: any,
+    @CurrentOrg() organizationId?: string,
   ) {
     const result = await this.companiesService.create(
       { name, inn, email, phone, website },
       user.id,
+      organizationId,
     );
     return JSON.stringify(result);
   }
@@ -53,8 +57,9 @@ export class CompaniesResolver {
   async deleteCompany(
     @Args('id') id: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    await this.companiesService.remove(id, user.id, user.role);
+    await this.companiesService.remove(id, organizationId);
     return true;
   }
 }

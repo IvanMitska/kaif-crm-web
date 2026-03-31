@@ -15,103 +15,120 @@ import { UpdatePipelineDto } from './dto/update-pipeline.dto';
 import { CreateStageDto } from './dto/create-stage.dto';
 import { UpdateStageDto } from './dto/update-stage.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { OrganizationGuard } from '../auth/guards/organization.guard';
+import { OrgRoles } from '../auth/decorators/org-roles.decorator';
+import { CurrentOrg } from '../auth/decorators/current-org.decorator';
+import { OrgRole } from '@prisma/client';
 
 @ApiTags('pipelines')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, OrganizationGuard)
 @Controller('pipelines')
 export class PipelinesController {
   constructor(private readonly pipelinesService: PipelinesService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN, UserRole.SUPERVISOR)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @ApiOperation({ summary: 'Создать новую воронку продаж' })
   @ApiResponse({ status: 201, description: 'Воронка успешно создана' })
-  create(@Body() createPipelineDto: CreatePipelineDto) {
-    return this.pipelinesService.create(createPipelineDto);
+  create(
+    @CurrentOrg() organizationId: string,
+    @Body() createPipelineDto: CreatePipelineDto,
+  ) {
+    return this.pipelinesService.create(organizationId, createPipelineDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Получить список воронок' })
   @ApiResponse({ status: 200, description: 'Список воронок' })
-  findAll() {
-    return this.pipelinesService.findAll();
+  findAll(@CurrentOrg() organizationId: string) {
+    return this.pipelinesService.findAll(organizationId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Получить воронку по ID' })
   @ApiResponse({ status: 200, description: 'Воронка найдена' })
   @ApiResponse({ status: 404, description: 'Воронка не найдена' })
-  findOne(@Param('id') id: string) {
-    return this.pipelinesService.findOne(id);
+  findOne(
+    @CurrentOrg() organizationId: string,
+    @Param('id') id: string,
+  ) {
+    return this.pipelinesService.findOne(organizationId, id);
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN, UserRole.SUPERVISOR)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @ApiOperation({ summary: 'Обновить воронку' })
   @ApiResponse({ status: 200, description: 'Воронка обновлена' })
   @ApiResponse({ status: 404, description: 'Воронка не найдена' })
   update(
+    @CurrentOrg() organizationId: string,
     @Param('id') id: string,
     @Body() updatePipelineDto: UpdatePipelineDto,
   ) {
-    return this.pipelinesService.update(id, updatePipelineDto);
+    return this.pipelinesService.update(organizationId, id, updatePipelineDto);
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @ApiOperation({ summary: 'Удалить воронку' })
   @ApiResponse({ status: 200, description: 'Воронка удалена' })
   @ApiResponse({ status: 404, description: 'Воронка не найдена' })
   @ApiResponse({ status: 400, description: 'Невозможно удалить воронку' })
-  remove(@Param('id') id: string) {
-    return this.pipelinesService.remove(id);
+  remove(
+    @CurrentOrg() organizationId: string,
+    @Param('id') id: string,
+  ) {
+    return this.pipelinesService.remove(organizationId, id);
   }
 
   @Post(':id/stages')
-  @Roles(UserRole.ADMIN, UserRole.SUPERVISOR)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @ApiOperation({ summary: 'Добавить этап в воронку' })
   @ApiResponse({ status: 201, description: 'Этап добавлен' })
   createStage(
+    @CurrentOrg() organizationId: string,
     @Param('id') pipelineId: string,
     @Body() createStageDto: CreateStageDto,
   ) {
-    return this.pipelinesService.createStage(pipelineId, createStageDto);
+    return this.pipelinesService.createStage(organizationId, pipelineId, createStageDto);
   }
 
   @Patch('stages/:stageId')
-  @Roles(UserRole.ADMIN, UserRole.SUPERVISOR)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @ApiOperation({ summary: 'Обновить этап' })
   @ApiResponse({ status: 200, description: 'Этап обновлен' })
   @ApiResponse({ status: 404, description: 'Этап не найден' })
   updateStage(
+    @CurrentOrg() organizationId: string,
     @Param('stageId') stageId: string,
     @Body() updateStageDto: UpdateStageDto,
   ) {
-    return this.pipelinesService.updateStage(stageId, updateStageDto);
+    return this.pipelinesService.updateStage(organizationId, stageId, updateStageDto);
   }
 
   @Delete('stages/:stageId')
-  @Roles(UserRole.ADMIN)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @ApiOperation({ summary: 'Удалить этап' })
   @ApiResponse({ status: 200, description: 'Этап удален' })
   @ApiResponse({ status: 404, description: 'Этап не найден' })
   @ApiResponse({ status: 400, description: 'Невозможно удалить этап' })
-  removeStage(@Param('stageId') stageId: string) {
-    return this.pipelinesService.removeStage(stageId);
+  removeStage(
+    @CurrentOrg() organizationId: string,
+    @Param('stageId') stageId: string,
+  ) {
+    return this.pipelinesService.removeStage(organizationId, stageId);
   }
 
   @Post(':id/stages/reorder')
-  @Roles(UserRole.ADMIN, UserRole.SUPERVISOR)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @ApiOperation({ summary: 'Изменить порядок этапов' })
   @ApiResponse({ status: 200, description: 'Порядок этапов изменен' })
   reorderStages(
+    @CurrentOrg() organizationId: string,
     @Param('id') pipelineId: string,
     @Body('stageIds') stageIds: string[],
   ) {
-    return this.pipelinesService.reorderStages(pipelineId, stageIds);
+    return this.pipelinesService.reorderStages(organizationId, pipelineId, stageIds);
   }
 }

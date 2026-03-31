@@ -10,12 +10,12 @@ import { MoveDealDto } from './dto/move-deal.dto';
 export class DealsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createDealDto: CreateDealDto, userId: string) {
+  async create(createDealDto: CreateDealDto, userId: string, organizationId: string) {
     const { products, ...dealData } = createDealDto;
 
     // Получаем дефолтный pipeline и его первый этап
     const defaultPipeline = await this.prisma.pipeline.findFirst({
-      where: { isDefault: true },
+      where: { isDefault: true, organizationId },
       include: { stages: { orderBy: { order: 'asc' } } },
     });
 
@@ -26,6 +26,7 @@ export class DealsService {
     const deal = await this.prisma.deal.create({
       data: {
         ...dealData,
+        organizationId,
         stageId: createDealDto.stageId || defaultPipeline.stages[0].id,
         ownerId: userId,
         createdById: userId,
@@ -66,7 +67,7 @@ export class DealsService {
     return deal;
   }
 
-  async findAll(filter: DealsFilterDto, userId: string, userRole: string) {
+  async findAll(filter: DealsFilterDto, organizationId: string) {
     const {
       skip = 0,
       take = 20,
@@ -84,12 +85,12 @@ export class DealsService {
     } = filter;
 
     const where: Prisma.DealWhereInput = {
-      ...(userRole !== 'ADMIN' && userRole !== 'SUPERVISOR' ? { ownerId: userId } : {}),
+      organizationId,
       ...(search ? {
         OR: [
           { title: { contains: search, mode: 'insensitive' } },
           { description: { contains: search, mode: 'insensitive' } },
-          { contact: { 
+          { contact: {
             OR: [
               { firstName: { contains: search, mode: 'insensitive' } },
               { lastName: { contains: search, mode: 'insensitive' } },
@@ -150,15 +151,15 @@ export class DealsService {
     };
   }
 
-  async findOne(id: string, userId: string, userRole: string) {
-    const deal = await this.prisma.deal.findUnique({
-      where: { 
+  async findOne(id: string, organizationId: string) {
+    const deal = await this.prisma.deal.findFirst({
+      where: {
         id,
-        ...(userRole !== 'ADMIN' && userRole !== 'SUPERVISOR' ? { ownerId: userId } : {}),
+        organizationId,
       },
       include: {
         stage: {
-          include: { 
+          include: {
             pipeline: {
               include: {
                 stages: {
@@ -220,8 +221,8 @@ export class DealsService {
     return deal;
   }
 
-  async update(id: string, updateDealDto: UpdateDealDto, userId: string, userRole: string) {
-    const deal = await this.findOne(id, userId, userRole);
+  async update(id: string, updateDealDto: UpdateDealDto, userId: string, organizationId: string) {
+    const deal = await this.findOne(id, organizationId);
 
     const { products, ...dealData } = updateDealDto;
 
@@ -266,8 +267,8 @@ export class DealsService {
     return updated;
   }
 
-  async moveDeal(id: string, moveDealDto: MoveDealDto, userId: string, userRole: string) {
-    const deal = await this.findOne(id, userId, userRole);
+  async moveDeal(id: string, moveDealDto: MoveDealDto, userId: string, organizationId: string) {
+    const deal = await this.findOne(id, organizationId);
 
     const newStage = await this.prisma.stage.findUnique({
       where: { id: moveDealDto.stageId },
@@ -323,8 +324,8 @@ export class DealsService {
     return updated;
   }
 
-  async remove(id: string, userId: string, userRole: string) {
-    await this.findOne(id, userId, userRole);
+  async remove(id: string, organizationId: string) {
+    await this.findOne(id, organizationId);
 
     await this.prisma.deal.delete({
       where: { id },
@@ -333,8 +334,8 @@ export class DealsService {
     return { message: 'Сделка успешно удалена' };
   }
 
-  async closeDeal(id: string, won: boolean, userId: string, userRole: string) {
-    const deal = await this.findOne(id, userId, userRole);
+  async closeDeal(id: string, won: boolean, userId: string, organizationId: string) {
+    const deal = await this.findOne(id, organizationId);
 
     const updated = await this.prisma.deal.update({
       where: { id },
@@ -364,9 +365,9 @@ export class DealsService {
     return updated;
   }
 
-  async getDealsByStage(pipelineId: string, userId: string, userRole: string) {
-    const pipeline = await this.prisma.pipeline.findUnique({
-      where: { id: pipelineId },
+  async getDealsByStage(pipelineId: string, organizationId: string) {
+    const pipeline = await this.prisma.pipeline.findFirst({
+      where: { id: pipelineId, organizationId },
       include: {
         stages: {
           orderBy: { order: 'asc' },
@@ -383,7 +384,7 @@ export class DealsService {
         const deals = await this.prisma.deal.findMany({
           where: {
             stageId: stage.id,
-            ...(userRole !== 'ADMIN' && userRole !== 'SUPERVISOR' ? { ownerId: userId } : {}),
+            organizationId,
           },
           include: {
             contact: true,
@@ -424,8 +425,8 @@ export class DealsService {
     };
   }
 
-  async duplicateDeal(id: string, userId: string, userRole: string) {
-    const deal = await this.findOne(id, userId, userRole);
+  async duplicateDeal(id: string, userId: string, organizationId: string) {
+    const deal = await this.findOne(id, organizationId);
 
     const newDeal = await this.prisma.deal.create({
       data: {
@@ -436,6 +437,7 @@ export class DealsService {
         expectedDate: deal.expectedDate,
         description: deal.description,
         customFields: deal.customFields,
+        organizationId,
         stageId: deal.stageId,
         contactId: deal.contactId,
         companyId: deal.companyId,
@@ -479,8 +481,8 @@ export class DealsService {
     return newDeal;
   }
 
-  async getDealStats(id: string, userId: string, userRole: string) {
-    const deal = await this.findOne(id, userId, userRole);
+  async getDealStats(id: string, organizationId: string) {
+    const deal = await this.findOne(id, organizationId);
 
     const [tasksCount, completedTasksCount, activitiesCount] = await Promise.all([
       this.prisma.task.count({ where: { dealId: id } }),

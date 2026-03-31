@@ -3,6 +3,7 @@ import { UseGuards } from '@nestjs/common';
 import { DealsService } from './deals.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CurrentOrg } from '../auth/decorators/current-org.decorator';
 
 @Resolver('Deal')
 @UseGuards(JwtAuthGuard)
@@ -16,11 +17,11 @@ export class DealsResolver {
     @Args('search', { nullable: true }) search?: string,
     @Args('pipelineId', { nullable: true }) pipelineId?: string,
     @CurrentUser() user?: any,
+    @CurrentOrg() organizationId?: string,
   ) {
     const result = await this.dealsService.findAll(
       { skip, take, search, pipelineId },
-      user.id,
-      user.role,
+      organizationId,
     );
     return JSON.stringify(result);
   }
@@ -29,8 +30,9 @@ export class DealsResolver {
   async deal(
     @Args('id') id: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    const result = await this.dealsService.findOne(id, user.id, user.role);
+    const result = await this.dealsService.findOne(id, organizationId);
     return JSON.stringify(result);
   }
 
@@ -38,8 +40,9 @@ export class DealsResolver {
   async dealsByStage(
     @Args('pipelineId') pipelineId: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    const result = await this.dealsService.getDealsByStage(pipelineId, user.id, user.role);
+    const result = await this.dealsService.getDealsByStage(pipelineId, organizationId);
     return JSON.stringify(result);
   }
 
@@ -50,10 +53,12 @@ export class DealsResolver {
     @Args('contactId', { nullable: true }) contactId?: string,
     @Args('companyId', { nullable: true }) companyId?: string,
     @CurrentUser() user?: any,
+    @CurrentOrg() organizationId?: string,
   ) {
     const result = await this.dealsService.create(
       { title, amount, contactId, companyId },
       user.id,
+      organizationId,
     );
     return JSON.stringify(result);
   }
@@ -63,12 +68,13 @@ export class DealsResolver {
     @Args('dealId') dealId: string,
     @Args('stageId') stageId: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
     const result = await this.dealsService.moveDeal(
       dealId,
       { stageId },
       user.id,
-      user.role,
+      organizationId,
     );
     return JSON.stringify(result);
   }
@@ -77,8 +83,9 @@ export class DealsResolver {
   async deleteDeal(
     @Args('id') id: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    await this.dealsService.remove(id, user.id, user.role);
+    await this.dealsService.remove(id, organizationId);
     return true;
   }
 }

@@ -9,17 +9,15 @@ import { ContactsFilterDto } from './dto/contacts-filter.dto';
 export class ContactsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createContactDto: CreateContactDto, userId: string) {
+  async create(createContactDto: CreateContactDto, userId: string, organizationId: string) {
     const { tags, ...contactData } = createContactDto;
 
-    // TODO: Update tag handling for multi-tenant
-    // Tags now require organizationId for unique lookup
     const contact = await this.prisma.contact.create({
       data: {
         ...contactData,
         ownerId: userId,
         createdById: userId,
-        // Tags will be connected after organizationId is implemented
+        organizationId,
       },
       include: {
         company: true,
@@ -42,7 +40,7 @@ export class ContactsService {
     return contact;
   }
 
-  async findAll(filter: ContactsFilterDto, userId: string, userRole: string) {
+  async findAll(filter: ContactsFilterDto, organizationId: string) {
     const {
       skip = 0,
       take = 20,
@@ -56,7 +54,7 @@ export class ContactsService {
     } = filter;
 
     const where: Prisma.ContactWhereInput = {
-      ...(userRole !== 'ADMIN' ? { ownerId: userId } : {}),
+      organizationId,
       ...(search ? {
         OR: [
           { firstName: { contains: search, mode: 'insensitive' } },
@@ -117,12 +115,9 @@ export class ContactsService {
     };
   }
 
-  async findOne(id: string, userId: string, userRole: string) {
-    const contact = await this.prisma.contact.findUnique({
-      where: { 
-        id,
-        ...(userRole !== 'ADMIN' ? { ownerId: userId } : {}),
-      },
+  async findOne(id: string, organizationId: string) {
+    const contact = await this.prisma.contact.findFirst({
+      where: { id, organizationId },
       include: {
         company: true,
         tags: true,
@@ -184,17 +179,14 @@ export class ContactsService {
     return contact;
   }
 
-  async update(id: string, updateContactDto: UpdateContactDto, userId: string, userRole: string) {
-    const contact = await this.findOne(id, userId, userRole);
+  async update(id: string, updateContactDto: UpdateContactDto, userId: string, organizationId: string) {
+    await this.findOne(id, organizationId);
 
     const { tags, ...contactData } = updateContactDto;
 
     const updated = await this.prisma.contact.update({
       where: { id },
-      data: {
-        ...contactData,
-        // TODO: Update tag handling for multi-tenant
-      },
+      data: contactData,
       include: {
         company: true,
         tags: true,
@@ -216,8 +208,8 @@ export class ContactsService {
     return updated;
   }
 
-  async remove(id: string, userId: string, userRole: string) {
-    await this.findOne(id, userId, userRole);
+  async remove(id: string, organizationId: string) {
+    await this.findOne(id, organizationId);
 
     await this.prisma.contact.delete({
       where: { id },
@@ -226,27 +218,19 @@ export class ContactsService {
     return { message: 'Контакт успешно удален' };
   }
 
-  async importContacts(file: Express.Multer.File, userId: string) {
+  async importContacts(file: Express.Multer.File, userId: string, organizationId: string) {
     // Здесь будет логика импорта из CSV/Excel
-    // Пока заглушка
     return { message: 'Импорт контактов в разработке' };
   }
 
-  async exportContacts(filter: ContactsFilterDto, userId: string, userRole: string) {
-    const contacts = await this.findAll(
-      { ...filter, take: 10000 },
-      userId,
-      userRole
-    );
-
-    // Здесь будет логика экспорта в CSV/Excel
-    // Пока заглушка
+  async exportContacts(filter: ContactsFilterDto, organizationId: string) {
+    const contacts = await this.findAll({ ...filter, take: 10000 }, organizationId);
     return { message: 'Экспорт контактов в разработке', count: contacts.total };
   }
 
-  async findDuplicates(userId: string, userRole: string) {
+  async findDuplicates(organizationId: string) {
     const contacts = await this.prisma.contact.findMany({
-      where: userRole !== 'ADMIN' ? { ownerId: userId } : {},
+      where: { organizationId },
       select: {
         id: true,
         firstName: true,
@@ -261,7 +245,7 @@ export class ContactsService {
 
     for (const contact of contacts) {
       const key = `${contact.email?.toLowerCase() || ''}_${contact.phone || ''}`;
-      
+
       if (key !== '_' && seen.has(key)) {
         const existing = seen.get(key);
         duplicates.push({
@@ -277,10 +261,10 @@ export class ContactsService {
     return duplicates;
   }
 
-  async mergeDuplicates(originalId: string, duplicateId: string, userId: string, userRole: string) {
+  async mergeDuplicates(originalId: string, duplicateId: string, userId: string, organizationId: string) {
     const [original, duplicate] = await Promise.all([
-      this.findOne(originalId, userId, userRole),
-      this.findOne(duplicateId, userId, userRole),
+      this.findOne(originalId, organizationId),
+      this.findOne(duplicateId, organizationId),
     ]);
 
     // Переносим все связанные записи на оригинальный контакт
@@ -310,18 +294,16 @@ export class ContactsService {
       secondPhone: original.secondPhone || duplicate.secondPhone,
       position: original.position || duplicate.position,
       birthDate: original.birthDate || duplicate.birthDate,
-      description: original.description 
+      description: original.description
         ? `${original.description}\n\n${duplicate.description || ''}`
         : duplicate.description,
     };
 
-    // Обновляем оригинальный контакт
     await this.prisma.contact.update({
       where: { id: originalId },
       data: mergedData,
     });
 
-    // Удаляем дубликат
     await this.prisma.contact.delete({
       where: { id: duplicateId },
     });
@@ -334,12 +316,8 @@ export class ContactsService {
     return { message: 'Контакты успешно объединены' };
   }
 
-  async changeOwner(id: string, newOwnerId: string, userId: string, userRole: string) {
-    if (userRole !== 'ADMIN' && userRole !== 'SUPERVISOR') {
-      throw new BadRequestException('Недостаточно прав для смены ответственного');
-    }
-
-    const contact = await this.findOne(id, userId, userRole);
+  async changeOwner(id: string, newOwnerId: string, userId: string, organizationId: string) {
+    const contact = await this.findOne(id, organizationId);
 
     const newOwner = await this.prisma.user.findUnique({
       where: { id: newOwnerId },
@@ -373,8 +351,8 @@ export class ContactsService {
     return updated;
   }
 
-  async getContactStats(id: string, userId: string, userRole: string) {
-    const contact = await this.findOne(id, userId, userRole);
+  async getContactStats(id: string, organizationId: string) {
+    const contact = await this.findOne(id, organizationId);
 
     const [dealsCount, tasksCount, messagesCount, totalDealsAmount] = await Promise.all([
       this.prisma.deal.count({ where: { contactId: id } }),

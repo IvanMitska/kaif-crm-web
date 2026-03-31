@@ -9,14 +9,14 @@ import { CompaniesFilterDto } from './dto/companies-filter.dto';
 export class CompaniesService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createCompanyDto: CreateCompanyDto, userId: string) {
+  async create(createCompanyDto: CreateCompanyDto, userId: string, organizationId: string) {
     const { tags, ...companyData } = createCompanyDto;
 
     // TODO: INN uniqueness check needs organizationId scope
     // For now, skip global uniqueness check
     // if (companyData.inn) {
     //   const existingCompany = await this.prisma.company.findFirst({
-    //     where: { inn: companyData.inn, organizationId: ... },
+    //     where: { inn: companyData.inn, organizationId },
     //   });
     // }
 
@@ -26,6 +26,7 @@ export class CompaniesService {
         ...companyData,
         ownerId: userId,
         createdById: userId,
+        organizationId,
       },
       include: {
         tags: true,
@@ -53,7 +54,7 @@ export class CompaniesService {
     return company;
   }
 
-  async findAll(filter: CompaniesFilterDto, userId: string, userRole: string) {
+  async findAll(filter: CompaniesFilterDto, organizationId: string) {
     const {
       skip = 0,
       take = 20,
@@ -67,7 +68,7 @@ export class CompaniesService {
     } = filter;
 
     const where: Prisma.CompanyWhereInput = {
-      ...(userRole !== 'ADMIN' ? { ownerId: userId } : {}),
+      organizationId,
       ...(search ? {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
@@ -126,11 +127,11 @@ export class CompaniesService {
     };
   }
 
-  async findOne(id: string, userId: string, userRole: string) {
-    const company = await this.prisma.company.findUnique({
-      where: { 
+  async findOne(id: string, organizationId: string) {
+    const company = await this.prisma.company.findFirst({
+      where: {
         id,
-        ...(userRole !== 'ADMIN' ? { ownerId: userId } : {}),
+        organizationId,
       },
       include: {
         tags: true,
@@ -181,15 +182,15 @@ export class CompaniesService {
     return company;
   }
 
-  async update(id: string, updateCompanyDto: UpdateCompanyDto, userId: string, userRole: string) {
-    const company = await this.findOne(id, userId, userRole);
+  async update(id: string, updateCompanyDto: UpdateCompanyDto, userId: string, organizationId: string) {
+    const company = await this.findOne(id, organizationId);
 
     const { tags, ...companyData } = updateCompanyDto;
 
     // TODO: INN uniqueness check needs organizationId scope
     // if (companyData.inn && companyData.inn !== company.inn) {
     //   const existingCompany = await this.prisma.company.findFirst({
-    //     where: { inn: companyData.inn, organizationId: ..., NOT: { id } },
+    //     where: { inn: companyData.inn, organizationId, NOT: { id } },
     //   });
     // }
 
@@ -225,8 +226,8 @@ export class CompaniesService {
     return updated;
   }
 
-  async remove(id: string, userId: string, userRole: string) {
-    const company = await this.findOne(id, userId, userRole);
+  async remove(id: string, organizationId: string) {
+    const company = await this.findOne(id, organizationId);
 
     // Проверяем, есть ли связанные записи
     const [contactsCount, dealsCount] = await Promise.all([
@@ -247,8 +248,8 @@ export class CompaniesService {
     return { message: 'Компания успешно удалена' };
   }
 
-  async getCompanyStats(id: string, userId: string, userRole: string) {
-    const company = await this.findOne(id, userId, userRole);
+  async getCompanyStats(id: string, organizationId: string) {
+    const company = await this.findOne(id, organizationId);
 
     const [
       contactsCount,
@@ -311,14 +312,12 @@ export class CompaniesService {
     };
   }
 
-  async mergeCompanies(originalId: string, duplicateId: string, userId: string, userRole: string) {
-    if (userRole !== 'ADMIN') {
-      throw new BadRequestException('Только администратор может объединять компании');
-    }
+  async mergeCompanies(originalId: string, duplicateId: string, userId: string, organizationId: string) {
+    // Role check is now handled by OrganizationGuard with @OrgRoles(OrgRole.ADMIN) decorator
 
     const [original, duplicate] = await Promise.all([
-      this.findOne(originalId, userId, userRole),
-      this.findOne(duplicateId, userId, userRole),
+      this.findOne(originalId, organizationId),
+      this.findOne(duplicateId, organizationId),
     ]);
 
     // Переносим все связанные записи на оригинальную компанию
@@ -368,12 +367,10 @@ export class CompaniesService {
     return { message: 'Компании успешно объединены' };
   }
 
-  async changeOwner(id: string, newOwnerId: string, userId: string, userRole: string) {
-    if (userRole !== 'ADMIN' && userRole !== 'SUPERVISOR') {
-      throw new BadRequestException('Недостаточно прав для смены ответственного');
-    }
+  async changeOwner(id: string, newOwnerId: string, userId: string, organizationId: string) {
+    // Role check is now handled by OrganizationGuard with @OrgRoles decorator
 
-    const company = await this.findOne(id, userId, userRole);
+    const company = await this.findOne(id, organizationId);
 
     const newOwner = await this.prisma.user.findUnique({
       where: { id: newOwnerId },
@@ -407,17 +404,16 @@ export class CompaniesService {
     return updated;
   }
 
-  async importCompanies(file: Express.Multer.File, userId: string) {
+  async importCompanies(file: Express.Multer.File, userId: string, organizationId: string) {
     // Здесь будет логика импорта из CSV/Excel
     // Пока заглушка
     return { message: 'Импорт компаний в разработке' };
   }
 
-  async exportCompanies(filter: CompaniesFilterDto, userId: string, userRole: string) {
+  async exportCompanies(filter: CompaniesFilterDto, organizationId: string) {
     const companies = await this.findAll(
       { ...filter, take: 10000 },
-      userId,
-      userRole
+      organizationId
     );
 
     // Здесь будет логика экспорта в CSV/Excel

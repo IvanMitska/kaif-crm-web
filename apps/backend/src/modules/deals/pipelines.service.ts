@@ -9,17 +9,19 @@ import { UpdateStageDto } from './dto/update-stage.dto';
 export class PipelinesService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createPipelineDto: CreatePipelineDto) {
+  async create(organizationId: string, createPipelineDto: CreatePipelineDto) {
     const { stages, ...pipelineData } = createPipelineDto;
 
-    // Если это первая воронка, делаем её дефолтной
-    const pipelinesCount = await this.prisma.pipeline.count();
+    // Если это первая воронка в организации, делаем её дефолтной
+    const pipelinesCount = await this.prisma.pipeline.count({
+      where: { organizationId },
+    });
     const isDefault = pipelinesCount === 0 ? true : createPipelineDto.isDefault;
 
-    // Если новая воронка дефолтная, убираем флаг у других
+    // Если новая воронка дефолтная, убираем флаг у других в этой организации
     if (isDefault) {
       await this.prisma.pipeline.updateMany({
-        where: { isDefault: true },
+        where: { isDefault: true, organizationId },
         data: { isDefault: false },
       });
     }
@@ -27,6 +29,7 @@ export class PipelinesService {
     const pipeline = await this.prisma.pipeline.create({
       data: {
         ...pipelineData,
+        organizationId,
         isDefault,
         stages: stages ? {
           create: stages.map((stage, index) => ({
@@ -51,14 +54,15 @@ export class PipelinesService {
     return pipeline;
   }
 
-  async findAll() {
+  async findAll(organizationId: string) {
     const pipelines = await this.prisma.pipeline.findMany({
+      where: { organizationId },
       include: {
         stages: {
           orderBy: { order: 'asc' },
         },
         _count: {
-          select: { 
+          select: {
             stages: true,
           },
         },
@@ -103,9 +107,9 @@ export class PipelinesService {
     return pipelinesWithStats;
   }
 
-  async findOne(id: string) {
-    const pipeline = await this.prisma.pipeline.findUnique({
-      where: { id },
+  async findOne(organizationId: string, id: string) {
+    const pipeline = await this.prisma.pipeline.findFirst({
+      where: { id, organizationId },
       include: {
         stages: {
           orderBy: { order: 'asc' },
@@ -146,15 +150,16 @@ export class PipelinesService {
     };
   }
 
-  async update(id: string, updatePipelineDto: UpdatePipelineDto) {
-    const pipeline = await this.findOne(id);
+  async update(organizationId: string, id: string, updatePipelineDto: UpdatePipelineDto) {
+    const pipeline = await this.findOne(organizationId, id);
 
-    // Если делаем воронку дефолтной, убираем флаг у других
+    // Если делаем воронку дефолтной, убираем флаг у других в этой организации
     if (updatePipelineDto.isDefault) {
       await this.prisma.pipeline.updateMany({
-        where: { 
+        where: {
           isDefault: true,
           id: { not: id },
+          organizationId,
         },
         data: { isDefault: false },
       });
@@ -173,8 +178,8 @@ export class PipelinesService {
     return updated;
   }
 
-  async remove(id: string) {
-    const pipeline = await this.findOne(id);
+  async remove(organizationId: string, id: string) {
+    const pipeline = await this.findOne(organizationId, id);
 
     // Проверяем, есть ли сделки в этой воронке
     const dealsCount = await this.prisma.deal.count({
@@ -189,8 +194,10 @@ export class PipelinesService {
       );
     }
 
-    // Проверяем, не последняя ли это воронка
-    const pipelinesCount = await this.prisma.pipeline.count();
+    // Проверяем, не последняя ли это воронка в организации
+    const pipelinesCount = await this.prisma.pipeline.count({
+      where: { organizationId },
+    });
     if (pipelinesCount === 1) {
       throw new BadRequestException('Невозможно удалить последнюю воронку');
     }
@@ -199,9 +206,11 @@ export class PipelinesService {
       where: { id },
     });
 
-    // Если удалили дефолтную, делаем дефолтной первую оставшуюся
+    // Если удалили дефолтную, делаем дефолтной первую оставшуюся в этой организации
     if (pipeline.isDefault) {
-      const firstPipeline = await this.prisma.pipeline.findFirst();
+      const firstPipeline = await this.prisma.pipeline.findFirst({
+        where: { organizationId },
+      });
       if (firstPipeline) {
         await this.prisma.pipeline.update({
           where: { id: firstPipeline.id },
@@ -213,8 +222,8 @@ export class PipelinesService {
     return { message: 'Воронка успешно удалена' };
   }
 
-  async createStage(pipelineId: string, createStageDto: CreateStageDto) {
-    const pipeline = await this.findOne(pipelineId);
+  async createStage(organizationId: string, pipelineId: string, createStageDto: CreateStageDto) {
+    const pipeline = await this.findOne(organizationId, pipelineId);
 
     // Получаем максимальный order
     const maxOrder = Math.max(...pipeline.stages.map(s => s.order), -1);
@@ -245,8 +254,8 @@ export class PipelinesService {
     return stage;
   }
 
-  async updateStage(stageId: string, updateStageDto: UpdateStageDto) {
-    const stage = await this.prisma.stage.findUnique({
+  async updateStage(organizationId: string, stageId: string, updateStageDto: UpdateStageDto) {
+    const stage = await this.prisma.stage.findFirst({
       where: { id: stageId },
       include: { pipeline: true },
     });
@@ -303,8 +312,8 @@ export class PipelinesService {
     return updated;
   }
 
-  async removeStage(stageId: string) {
-    const stage = await this.prisma.stage.findUnique({
+  async removeStage(organizationId: string, stageId: string) {
+    const stage = await this.prisma.stage.findFirst({
       where: { id: stageId },
       include: {
         pipeline: {
@@ -353,8 +362,8 @@ export class PipelinesService {
     return { message: 'Этап успешно удален' };
   }
 
-  async reorderStages(pipelineId: string, stageIds: string[]) {
-    const pipeline = await this.findOne(pipelineId);
+  async reorderStages(organizationId: string, pipelineId: string, stageIds: string[]) {
+    const pipeline = await this.findOne(organizationId, pipelineId);
 
     // Проверяем, что все ID принадлежат этой воронке
     const existingStageIds = pipeline.stages.map(s => s.id);
@@ -374,7 +383,7 @@ export class PipelinesService {
       ),
     );
 
-    return this.findOne(pipelineId);
+    return this.findOne(organizationId, pipelineId);
   }
 
   private getDefaultStages() {

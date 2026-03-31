@@ -16,12 +16,13 @@ import { UpdateDealDto } from './dto/update-deal.dto';
 import { DealsFilterDto } from './dto/deals-filter.dto';
 import { MoveDealDto } from './dto/move-deal.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { OrganizationGuard } from '../auth/guards/organization.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CurrentOrg } from '../auth/decorators/current-org.decorator';
 
 @ApiTags('deals')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, OrganizationGuard)
 @Controller('deals')
 export class DealsController {
   constructor(private readonly dealsService: DealsService) {}
@@ -32,8 +33,9 @@ export class DealsController {
   create(
     @Body() createDealDto: CreateDealDto,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.dealsService.create(createDealDto, user.id);
+    return this.dealsService.create(createDealDto, user.id, organizationId);
   }
 
   @Get()
@@ -42,8 +44,9 @@ export class DealsController {
   findAll(
     @Query() filter: DealsFilterDto,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.dealsService.findAll(filter, user.id, user.role);
+    return this.dealsService.findAll(filter, organizationId);
   }
 
   @Get('pipeline/:pipelineId')
@@ -52,8 +55,9 @@ export class DealsController {
   getDealsByStage(
     @Param('pipelineId') pipelineId: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.dealsService.getDealsByStage(pipelineId, user.id, user.role);
+    return this.dealsService.getDealsByStage(pipelineId, organizationId);
   }
 
   @Get(':id')
@@ -63,8 +67,9 @@ export class DealsController {
   findOne(
     @Param('id') id: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.dealsService.findOne(id, user.id, user.role);
+    return this.dealsService.findOne(id, organizationId);
   }
 
   @Get(':id/stats')
@@ -73,8 +78,9 @@ export class DealsController {
   getDealStats(
     @Param('id') id: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.dealsService.getDealStats(id, user.id, user.role);
+    return this.dealsService.getDealStats(id, organizationId);
   }
 
   @Patch(':id')
@@ -85,8 +91,9 @@ export class DealsController {
     @Param('id') id: string,
     @Body() updateDealDto: UpdateDealDto,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.dealsService.update(id, updateDealDto, user.id, user.role);
+    return this.dealsService.update(id, updateDealDto, user.id, organizationId);
   }
 
   @Patch(':id/move')
@@ -96,8 +103,9 @@ export class DealsController {
     @Param('id') id: string,
     @Body() moveDealDto: MoveDealDto,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.dealsService.moveDeal(id, moveDealDto, user.id, user.role);
+    return this.dealsService.moveDeal(id, moveDealDto, user.id, organizationId);
   }
 
   @Post(':id/duplicate')
@@ -106,8 +114,9 @@ export class DealsController {
   duplicateDeal(
     @Param('id') id: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.dealsService.duplicateDeal(id, user.id, user.role);
+    return this.dealsService.duplicateDeal(id, user.id, organizationId);
   }
 
   @Post(':id/won')
@@ -116,8 +125,9 @@ export class DealsController {
   wonDeal(
     @Param('id') id: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.dealsService.closeDeal(id, true, user.id, user.role);
+    return this.dealsService.closeDeal(id, true, user.id, organizationId);
   }
 
   @Post(':id/lost')
@@ -126,8 +136,9 @@ export class DealsController {
   lostDeal(
     @Param('id') id: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.dealsService.closeDeal(id, false, user.id, user.role);
+    return this.dealsService.closeDeal(id, false, user.id, organizationId);
   }
 
   @Delete(':id')
@@ -137,7 +148,8 @@ export class DealsController {
   remove(
     @Param('id') id: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.dealsService.remove(id, user.id, user.role);
+    return this.dealsService.remove(id, organizationId);
   }
 }

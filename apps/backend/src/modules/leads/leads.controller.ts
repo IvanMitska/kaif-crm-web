@@ -15,12 +15,13 @@ import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { LeadsFilterDto } from './dto/leads-filter.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { OrganizationGuard } from '../auth/guards/organization.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CurrentOrg } from '../auth/decorators/current-org.decorator';
 
 @ApiTags('leads')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, OrganizationGuard)
 @Controller('leads')
 export class LeadsController {
   constructor(private readonly leadsService: LeadsService) {}
@@ -31,8 +32,9 @@ export class LeadsController {
   create(
     @Body() createLeadDto: CreateLeadDto,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.leadsService.create(createLeadDto, user.id);
+    return this.leadsService.create(createLeadDto, user.id, organizationId);
   }
 
   @Get()
@@ -40,16 +42,16 @@ export class LeadsController {
   @ApiResponse({ status: 200, description: 'Список лидов' })
   findAll(
     @Query() filter: LeadsFilterDto,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.leadsService.findAll(filter, user.id, user.role);
+    return this.leadsService.findAll(filter, organizationId);
   }
 
   @Get('stats')
   @ApiOperation({ summary: 'Получить статистику по лидам' })
   @ApiResponse({ status: 200, description: 'Статистика лидов' })
-  getStats(@CurrentUser() user: any) {
-    return this.leadsService.getStats(user.id, user.role);
+  getStats(@CurrentOrg() organizationId: string) {
+    return this.leadsService.getStats(organizationId);
   }
 
   @Get(':id')
@@ -58,9 +60,9 @@ export class LeadsController {
   @ApiResponse({ status: 404, description: 'Лид не найден' })
   findOne(
     @Param('id') id: string,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.leadsService.findOne(id, user.id, user.role);
+    return this.leadsService.findOne(id, organizationId);
   }
 
   @Patch(':id')
@@ -70,9 +72,9 @@ export class LeadsController {
   update(
     @Param('id') id: string,
     @Body() updateLeadDto: UpdateLeadDto,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.leadsService.update(id, updateLeadDto, user.id, user.role);
+    return this.leadsService.update(id, updateLeadDto, organizationId);
   }
 
   @Post(':id/convert')
@@ -82,8 +84,9 @@ export class LeadsController {
     @Param('id') id: string,
     @Body() data: any,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.leadsService.convert(id, data, user.id, user.role);
+    return this.leadsService.convert(id, data, user.id, organizationId);
   }
 
   @Delete(':id')
@@ -92,8 +95,8 @@ export class LeadsController {
   @ApiResponse({ status: 404, description: 'Лид не найден' })
   remove(
     @Param('id') id: string,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.leadsService.remove(id, user.id, user.role);
+    return this.leadsService.remove(id, organizationId);
   }
 }

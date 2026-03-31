@@ -21,14 +21,15 @@ import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { ContactsFilterDto } from './dto/contacts-filter.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { OrganizationGuard } from '../auth/guards/organization.guard';
+import { OrgRoles } from '../auth/decorators/org-roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { UserRole } from '@prisma/client';
+import { CurrentOrg } from '../auth/decorators/current-org.decorator';
+import { OrgRole } from '@prisma/client';
 
 @ApiTags('contacts')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, OrganizationGuard)
 @Controller('contacts')
 export class ContactsController {
   constructor(private readonly contactsService: ContactsService) {}
@@ -39,8 +40,9 @@ export class ContactsController {
   create(
     @Body() createContactDto: CreateContactDto,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.contactsService.create(createContactDto, user.id);
+    return this.contactsService.create(createContactDto, user.id, organizationId);
   }
 
   @Get()
@@ -48,16 +50,16 @@ export class ContactsController {
   @ApiResponse({ status: 200, description: 'Список контактов' })
   findAll(
     @Query() filter: ContactsFilterDto,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.contactsService.findAll(filter, user.id, user.role);
+    return this.contactsService.findAll(filter, organizationId);
   }
 
   @Get('duplicates')
   @ApiOperation({ summary: 'Найти дубликаты контактов' })
   @ApiResponse({ status: 200, description: 'Список дубликатов' })
-  findDuplicates(@CurrentUser() user: any) {
-    return this.contactsService.findDuplicates(user.id, user.role);
+  findDuplicates(@CurrentOrg() organizationId: string) {
+    return this.contactsService.findDuplicates(organizationId);
   }
 
   @Post('merge')
@@ -67,13 +69,9 @@ export class ContactsController {
     @Body('originalId') originalId: string,
     @Body('duplicateId') duplicateId: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.contactsService.mergeDuplicates(
-      originalId,
-      duplicateId,
-      user.id,
-      user.role,
-    );
+    return this.contactsService.mergeDuplicates(originalId, duplicateId, user.id, organizationId);
   }
 
   @Post('import')
@@ -92,8 +90,9 @@ export class ContactsController {
     )
     file: Express.Multer.File,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.contactsService.importContacts(file, user.id);
+    return this.contactsService.importContacts(file, user.id, organizationId);
   }
 
   @Get('export')
@@ -101,9 +100,9 @@ export class ContactsController {
   @ApiResponse({ status: 200, description: 'Файл с контактами' })
   exportContacts(
     @Query() filter: ContactsFilterDto,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.contactsService.exportContacts(filter, user.id, user.role);
+    return this.contactsService.exportContacts(filter, organizationId);
   }
 
   @Get(':id')
@@ -112,9 +111,9 @@ export class ContactsController {
   @ApiResponse({ status: 404, description: 'Контакт не найден' })
   findOne(
     @Param('id') id: string,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.contactsService.findOne(id, user.id, user.role);
+    return this.contactsService.findOne(id, organizationId);
   }
 
   @Get(':id/stats')
@@ -122,9 +121,9 @@ export class ContactsController {
   @ApiResponse({ status: 200, description: 'Статистика контакта' })
   getContactStats(
     @Param('id') id: string,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.contactsService.getContactStats(id, user.id, user.role);
+    return this.contactsService.getContactStats(id, organizationId);
   }
 
   @Patch(':id')
@@ -135,20 +134,22 @@ export class ContactsController {
     @Param('id') id: string,
     @Body() updateContactDto: UpdateContactDto,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.contactsService.update(id, updateContactDto, user.id, user.role);
+    return this.contactsService.update(id, updateContactDto, user.id, organizationId);
   }
 
   @Patch(':id/owner')
-  @Roles(UserRole.ADMIN, UserRole.SUPERVISOR)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @ApiOperation({ summary: 'Изменить ответственного за контакт' })
   @ApiResponse({ status: 200, description: 'Ответственный изменен' })
   changeOwner(
     @Param('id') id: string,
     @Body('newOwnerId') newOwnerId: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.contactsService.changeOwner(id, newOwnerId, user.id, user.role);
+    return this.contactsService.changeOwner(id, newOwnerId, user.id, organizationId);
   }
 
   @Delete(':id')
@@ -157,8 +158,8 @@ export class ContactsController {
   @ApiResponse({ status: 404, description: 'Контакт не найден' })
   remove(
     @Param('id') id: string,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.contactsService.remove(id, user.id, user.role);
+    return this.contactsService.remove(id, organizationId);
   }
 }

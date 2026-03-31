@@ -21,14 +21,15 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { CompaniesFilterDto } from './dto/companies-filter.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { OrganizationGuard } from '../auth/guards/organization.guard';
+import { OrgRoles } from '../auth/decorators/org-roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { UserRole } from '@prisma/client';
+import { CurrentOrg } from '../auth/decorators/current-org.decorator';
+import { OrgRole } from '@prisma/client';
 
 @ApiTags('companies')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, OrganizationGuard)
 @Controller('companies')
 export class CompaniesController {
   constructor(private readonly companiesService: CompaniesService) {}
@@ -39,8 +40,9 @@ export class CompaniesController {
   create(
     @Body() createCompanyDto: CreateCompanyDto,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.companiesService.create(createCompanyDto, user.id);
+    return this.companiesService.create(createCompanyDto, user.id, organizationId);
   }
 
   @Get()
@@ -48,25 +50,26 @@ export class CompaniesController {
   @ApiResponse({ status: 200, description: 'Список компаний' })
   findAll(
     @Query() filter: CompaniesFilterDto,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.companiesService.findAll(filter, user.id, user.role);
+    return this.companiesService.findAll(filter, organizationId);
   }
 
   @Post('merge')
-  @Roles(UserRole.ADMIN)
+  @OrgRoles(OrgRole.ADMIN)
   @ApiOperation({ summary: 'Объединить компании' })
   @ApiResponse({ status: 200, description: 'Компании объединены' })
   mergeCompanies(
     @Body('originalId') originalId: string,
     @Body('duplicateId') duplicateId: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
     return this.companiesService.mergeCompanies(
       originalId,
       duplicateId,
       user.id,
-      user.role,
+      organizationId,
     );
   }
 
@@ -86,8 +89,9 @@ export class CompaniesController {
     )
     file: Express.Multer.File,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.companiesService.importCompanies(file, user.id);
+    return this.companiesService.importCompanies(file, user.id, organizationId);
   }
 
   @Get('export')
@@ -95,9 +99,9 @@ export class CompaniesController {
   @ApiResponse({ status: 200, description: 'Файл с компаниями' })
   exportCompanies(
     @Query() filter: CompaniesFilterDto,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.companiesService.exportCompanies(filter, user.id, user.role);
+    return this.companiesService.exportCompanies(filter, organizationId);
   }
 
   @Get(':id')
@@ -106,9 +110,9 @@ export class CompaniesController {
   @ApiResponse({ status: 404, description: 'Компания не найдена' })
   findOne(
     @Param('id') id: string,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.companiesService.findOne(id, user.id, user.role);
+    return this.companiesService.findOne(id, organizationId);
   }
 
   @Get(':id/stats')
@@ -116,9 +120,9 @@ export class CompaniesController {
   @ApiResponse({ status: 200, description: 'Статистика компании' })
   getCompanyStats(
     @Param('id') id: string,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.companiesService.getCompanyStats(id, user.id, user.role);
+    return this.companiesService.getCompanyStats(id, organizationId);
   }
 
   @Patch(':id')
@@ -129,20 +133,22 @@ export class CompaniesController {
     @Param('id') id: string,
     @Body() updateCompanyDto: UpdateCompanyDto,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.companiesService.update(id, updateCompanyDto, user.id, user.role);
+    return this.companiesService.update(id, updateCompanyDto, user.id, organizationId);
   }
 
   @Patch(':id/owner')
-  @Roles(UserRole.ADMIN, UserRole.SUPERVISOR)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @ApiOperation({ summary: 'Изменить ответственного за компанию' })
   @ApiResponse({ status: 200, description: 'Ответственный изменен' })
   changeOwner(
     @Param('id') id: string,
     @Body('newOwnerId') newOwnerId: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.companiesService.changeOwner(id, newOwnerId, user.id, user.role);
+    return this.companiesService.changeOwner(id, newOwnerId, user.id, organizationId);
   }
 
   @Delete(':id')
@@ -152,8 +158,8 @@ export class CompaniesController {
   @ApiResponse({ status: 400, description: 'Невозможно удалить компанию с связанными записями' })
   remove(
     @Param('id') id: string,
-    @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    return this.companiesService.remove(id, user.id, user.role);
+    return this.companiesService.remove(id, organizationId);
   }
 }

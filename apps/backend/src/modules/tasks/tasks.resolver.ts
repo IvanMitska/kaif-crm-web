@@ -3,6 +3,7 @@ import { UseGuards } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CurrentOrg } from '../auth/decorators/current-org.decorator';
 import { TaskStatus, TaskPriority } from '@prisma/client';
 
 @Resolver('Task')
@@ -16,11 +17,11 @@ export class TasksResolver {
     @Args('priority', { nullable: true }) priority?: TaskPriority,
     @Args('assigneeId', { nullable: true }) assigneeId?: string,
     @CurrentUser() user?: any,
+    @CurrentOrg() organizationId?: string,
   ) {
     const result = await this.tasksService.findAll(
       { status, priority, assigneeId },
-      user.id,
-      user.role,
+      organizationId,
     );
     return JSON.stringify(result);
   }
@@ -29,8 +30,9 @@ export class TasksResolver {
   async task(
     @Args('id') id: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    const result = await this.tasksService.findOne(id, user.id, user.role);
+    const result = await this.tasksService.findOne(id, organizationId);
     return JSON.stringify(result);
   }
 
@@ -39,11 +41,11 @@ export class TasksResolver {
     @Args('view', { nullable: true }) view?: string,
     @Args('date', { nullable: true }) date?: string,
     @CurrentUser() user?: any,
+    @CurrentOrg() organizationId?: string,
   ) {
     const result = await this.tasksService.getCalendarTasks(
       { view: view as any, date },
-      user.id,
-      user.role,
+      organizationId,
     );
     return JSON.stringify(result);
   }
@@ -57,10 +59,12 @@ export class TasksResolver {
     @Args('contactId', { nullable: true }) contactId?: string,
     @Args('dealId', { nullable: true }) dealId?: string,
     @CurrentUser() user?: any,
+    @CurrentOrg() organizationId?: string,
   ) {
     const result = await this.tasksService.create(
       { title, description, dueDate, priority, contactId, dealId },
       user.id,
+      organizationId,
     );
     return JSON.stringify(result);
   }
@@ -69,8 +73,9 @@ export class TasksResolver {
   async completeTask(
     @Args('id') id: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    const result = await this.tasksService.completeTask(id, user.id, user.role);
+    const result = await this.tasksService.completeTask(id, organizationId);
     return JSON.stringify(result);
   }
 
@@ -78,8 +83,9 @@ export class TasksResolver {
   async deleteTask(
     @Args('id') id: string,
     @CurrentUser() user: any,
+    @CurrentOrg() organizationId: string,
   ) {
-    await this.tasksService.remove(id, user.id, user.role);
+    await this.tasksService.remove(id, organizationId);
     return true;
   }
 }
