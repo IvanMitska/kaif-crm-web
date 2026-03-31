@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "pnpm install && pnpm run build"
+buildCommand = "pnpm install && cd apps/backend && npx prisma generate && pnpm run build"
 
 [deploy]
 startCommand = "cd apps/backend && npx prisma db push || true && node dist/main.js"
