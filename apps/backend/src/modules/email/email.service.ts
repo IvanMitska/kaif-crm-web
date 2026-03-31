@@ -10,7 +10,7 @@ export class EmailService {
 
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('RESEND_API_KEY');
-    this.fromEmail = this.configService.get<string>('EMAIL_FROM') || 'KAIF CRM <noreply@kaif-crm.com>';
+    this.fromEmail = this.configService.get<string>('EMAIL_FROM') || 'KAIF CRM <onboarding@resend.dev>';
 
     if (apiKey) {
       this.resend = new Resend(apiKey);
