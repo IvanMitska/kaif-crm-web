@@ -3,7 +3,7 @@ builder = "nixpacks"
 buildCommand = "pnpm install && cd apps/backend && npx prisma generate && pnpm run build"
 
 [deploy]
-startCommand = "cd apps/backend && npx prisma migrate resolve --applied 20250831101920_init || true && npx prisma migrate resolve --applied 20250331150000_add_multitenant || true && npx prisma migrate deploy && node dist/main.js"
+startCommand = "cd apps/backend && npx prisma db push --skip-generate && npx prisma migrate resolve --applied 20250831101920_init || true && npx prisma migrate resolve --applied 20250331150000_add_multitenant || true && node dist/main.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
