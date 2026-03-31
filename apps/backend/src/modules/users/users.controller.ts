@@ -60,6 +60,13 @@ export class UsersController {
     return this.usersService.findOne(user.id);
   }
 
+  @Get('online')
+  @ApiOperation({ summary: 'Получить онлайн пользователей' })
+  @ApiResponse({ status: 200, description: 'Список онлайн пользователей' })
+  getOnlineUsers() {
+    return this.usersService.getOnlineUsers();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Получить пользователя по ID' })
   @ApiResponse({ status: 200, description: 'Пользователь найден' })

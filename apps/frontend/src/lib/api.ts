@@ -203,4 +203,27 @@ export const leadsApi = {
   convert: (id: string, data: any) => api.post(`/leads/${id}/convert`, data),
 };
 
+// Users API
+export const usersApi = {
+  getAll: (params?: Record<string, any>) => api.get('/users', { params }),
+  getById: (id: string) => api.get(`/users/${id}`),
+  getMe: () => api.get('/users/me'),
+  getStats: (id: string) => api.get(`/users/${id}/stats`),
+  getOnline: () => api.get('/users/online'),
+  updateRole: (id: string, role: string) => api.patch(`/users/${id}/role`, { role }),
+  toggleActive: (id: string) => api.patch(`/users/${id}/toggle-active`),
+  delete: (id: string) => api.delete(`/users/${id}`),
+};
+
+// Invitations API
+export const invitationsApi = {
+  create: (data: { email: string; role?: string }) => api.post('/invitations', data),
+  getAll: (params?: Record<string, any>) => api.get('/invitations', { params }),
+  getByToken: (token: string) => api.get(`/invitations/token/${token}`),
+  accept: (data: { token: string; password: string; firstName: string; lastName: string; phone?: string }) =>
+    api.post('/invitations/accept', data),
+  cancel: (id: string) => api.delete(`/invitations/${id}`),
+  resend: (id: string) => api.post(`/invitations/${id}/resend`),
+};
+
 export default api;

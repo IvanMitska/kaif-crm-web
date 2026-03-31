@@ -71,6 +71,13 @@ enum LeadSource {
   OTHER
 }
 
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
 model User {
   id                String    @id @default(cuid())
   email             String    @unique
@@ -85,10 +92,13 @@ model User {
   twoFactorEnabled  Boolean   @default(false)
   twoFactorSecret   String?
   lastLoginAt       DateTime?
+  lastActivityAt    DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  refreshTokens     RefreshToken[]
+  refreshTokens        RefreshToken[]
+  createdInvitations   Invitation[]   @relation("InvitationCreator")
+  acceptedInvitations  Invitation[]   @relation("InvitationAcceptor")
   teams             TeamMember[]
   ownedContacts     Contact[]      @relation("ContactOwner")
   createdContacts   Contact[]      @relation("ContactCreator")
@@ -119,6 +129,28 @@ model RefreshToken {
 
   @@index([token])
   @@index([userId])
+}
+
+model Invitation {
+  id          String           @id @default(cuid())
+  email       String
+  role        UserRole         @default(OPERATOR)
+  token       String           @unique @default(cuid())
+  status      InvitationStatus @default(PENDING)
+  expiresAt   DateTime
+
+  invitedById  String
+  invitedBy    User    @relation("InvitationCreator", fields: [invitedById], references: [id])
+
+  acceptedById String?
+  acceptedBy   User?   @relation("InvitationAcceptor", fields: [acceptedById], references: [id])
+
+  createdAt    DateTime  @default(now())
+  acceptedAt   DateTime?
+
+  @@index([email])
+  @@index([token])
+  @@index([status])
 }
 
 model Team {

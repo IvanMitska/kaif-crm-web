@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Plus,
   Search,
@@ -30,8 +30,13 @@ import {
   Crown,
   BadgeCheck,
   X,
+  Loader2,
+  RefreshCw,
+  UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usersApi, invitationsApi } from "@/lib/api";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface Employee {
   id: string;
@@ -41,121 +46,12 @@ interface Employee {
   phone?: string;
   avatar?: string;
   role: "ADMIN" | "SUPERVISOR" | "MANAGER" | "OPERATOR";
-  department: string;
-  position?: string;
-  lastActivity?: string;
-  mobileApp: boolean;
-  desktopApp: boolean;
-  status: "active" | "inactive" | "vacation";
+  isActive: boolean;
+  lastLoginAt?: string;
+  lastActivityAt?: string;
   createdAt: string;
+  updatedAt?: string;
 }
-
-const mockEmployees: Employee[] = [
-  {
-    id: "1",
-    firstName: "Борис",
-    lastName: "Дадабаев",
-    email: "retroyohi@gmail.com",
-    phone: "+7 999 123 4567",
-    role: "ADMIN",
-    department: "Руководство",
-    position: "Главный администратор",
-    lastActivity: "2026-01-30T11:15:00",
-    mobileApp: false,
-    desktopApp: false,
-    status: "active",
-    createdAt: "2026-01-01",
-  },
-  {
-    id: "2",
-    firstName: "Иван",
-    lastName: "Мицка",
-    email: "mitska91@gmail.com",
-    phone: "+66 82 790 1131",
-    role: "MANAGER",
-    department: "Продажи",
-    position: "Менеджер по продажам",
-    lastActivity: "2026-03-01T21:55:00",
-    mobileApp: false,
-    desktopApp: false,
-    status: "active",
-    createdAt: "2026-01-15",
-  },
-  {
-    id: "3",
-    firstName: "Алья",
-    lastName: "Зенина",
-    email: "alyazenina50@gmail.com",
-    phone: "+66 88 900 1049",
-    role: "OPERATOR",
-    department: "Поддержка",
-    position: "Оператор",
-    lastActivity: "2025-12-25T12:33:00",
-    mobileApp: false,
-    desktopApp: false,
-    status: "active",
-    createdAt: "2026-02-01",
-  },
-  {
-    id: "4",
-    firstName: "Ирина",
-    lastName: "Гертей",
-    email: "gerteyirina123@gmail.com",
-    phone: "+66 99 489 6120",
-    role: "MANAGER",
-    department: "Продажи",
-    position: "Старший менеджер",
-    lastActivity: "2025-11-29T23:18:00",
-    mobileApp: false,
-    desktopApp: false,
-    status: "vacation",
-    createdAt: "2026-02-10",
-  },
-  {
-    id: "5",
-    firstName: "Дмитрий",
-    lastName: "Штарк",
-    email: "kalpachokshtark@gmail.com",
-    role: "SUPERVISOR",
-    department: "Продажи",
-    position: "Руководитель отдела продаж",
-    lastActivity: "2025-12-24T12:21:00",
-    mobileApp: false,
-    desktopApp: false,
-    status: "active",
-    createdAt: "2026-01-20",
-  },
-  {
-    id: "6",
-    firstName: "Мария",
-    lastName: "Петрова",
-    email: "maria.petrova@company.ru",
-    phone: "+7 999 888 7766",
-    role: "OPERATOR",
-    department: "Поддержка",
-    position: "Специалист поддержки",
-    lastActivity: "2026-02-28T09:45:00",
-    mobileApp: true,
-    desktopApp: true,
-    status: "active",
-    createdAt: "2026-03-01",
-  },
-  {
-    id: "7",
-    firstName: "Алексей",
-    lastName: "Сидоров",
-    email: "a.sidorov@company.ru",
-    phone: "+7 999 555 4433",
-    role: "MANAGER",
-    department: "Маркетинг",
-    position: "Маркетолог",
-    lastActivity: "2026-02-27T16:30:00",
-    mobileApp: true,
-    desktopApp: false,
-    status: "inactive",
-    createdAt: "2026-02-15",
-  },
-];
 
 const roleConfig: Record<string, { label: string; color: string; bgColor: string; icon: any }> = {
   ADMIN: { label: "Администратор", color: "text-red-400", bgColor: "bg-red-500/20", icon: Crown },
@@ -167,11 +63,13 @@ const roleConfig: Record<string, { label: string; color: string; bgColor: string
 const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
   active: { label: "Активен", color: "text-green-400", bgColor: "bg-green-500/20" },
   inactive: { label: "Неактивен", color: "text-gray-400", bgColor: "bg-white/10" },
-  vacation: { label: "В отпуске", color: "text-amber-400", bgColor: "bg-amber-500/20" },
 };
 
 export default function EmployeesPage() {
-  const [employees] = useState<Employee[]>(mockEmployees);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [selectedEmployees, setSelectedEmployees] = useState<Set<string>>(new Set());
@@ -179,11 +77,51 @@ export default function EmployeesPage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const [filterDepartment, setFilterDepartment] = useState<string>("all");
+  const [filterRole, setFilterRole] = useState<string>("all");
   const [perPage, setPerPage] = useState(20);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("OPERATOR");
+  const [inviting, setInviting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<Employee | null>(null);
+  const [roleChangeEmployee, setRoleChangeEmployee] = useState<Employee | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const departments = Array.from(new Set(employees.map((e) => e.department)));
+  const fetchEmployees = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [usersResponse, onlineResponse] = await Promise.all([
+        usersApi.getAll(),
+        usersApi.getOnline(),
+      ]);
+      setEmployees(usersResponse.data.data || []);
+      const onlineIds = new Set<string>((onlineResponse.data.data || []).map((u: any) => u.id));
+      setOnlineUserIds(onlineIds);
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Ошибка загрузки сотрудников");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEmployees();
+  }, [fetchEmployees]);
+
+  // Refresh online status every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const response = await usersApi.getOnline();
+        const onlineIds = new Set<string>((response.data.data || []).map((u: any) => u.id));
+        setOnlineUserIds(onlineIds);
+      } catch (err) {
+        // Silently fail for polling
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -195,16 +133,68 @@ export default function EmployeesPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const handleToggleActive = async (employee: Employee) => {
+    try {
+      await usersApi.toggleActive(employee.id);
+      setEmployees(employees.map(e =>
+        e.id === employee.id ? { ...e, isActive: !e.isActive } : e
+      ));
+      setOpenDropdown(null);
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Ошибка изменения статуса");
+    }
+  };
+
+  const handleChangeRole = async (employee: Employee, newRole: string) => {
+    try {
+      await usersApi.updateRole(employee.id, newRole);
+      setEmployees(employees.map(e =>
+        e.id === employee.id ? { ...e, role: newRole as Employee["role"] } : e
+      ));
+      setRoleChangeEmployee(null);
+      setOpenDropdown(null);
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Ошибка изменения роли");
+    }
+  };
+
+  const handleDelete = async (employee: Employee) => {
+    try {
+      await usersApi.delete(employee.id);
+      setEmployees(employees.filter(e => e.id !== employee.id));
+      setConfirmDelete(null);
+      setSelectedEmployee(null);
+      setOpenDropdown(null);
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Ошибка удаления сотрудника");
+    }
+  };
+
+  const handleInvite = async () => {
+    if (!inviteEmail.trim()) return;
+    try {
+      setInviting(true);
+      const response = await invitationsApi.create({ email: inviteEmail, role: inviteRole });
+      alert(`Приглашение отправлено!\n\nСсылка для регистрации:\n${response.data.inviteUrl}`);
+      setShowInviteModal(false);
+      setInviteEmail("");
+      setInviteRole("OPERATOR");
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Ошибка отправки приглашения");
+    } finally {
+      setInviting(false);
+    }
+  };
+
   const filteredEmployees = employees.filter((employee) => {
     const matchesSearch =
       employee.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       employee.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      employee.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      employee.department.toLowerCase().includes(searchQuery.toLowerCase());
+      employee.email.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesDepartment = filterDepartment === "all" || employee.department === filterDepartment;
+    const matchesRole = filterRole === "all" || employee.role === filterRole;
 
-    return matchesSearch && matchesDepartment;
+    return matchesSearch && matchesRole;
   });
 
   const sortedEmployees = [...filteredEmployees].sort((a, b) => {
@@ -214,15 +204,12 @@ export default function EmployeesPage() {
     if (sortField === "lastName") {
       aVal = a.lastName;
       bVal = b.lastName;
-    } else if (sortField === "department") {
-      aVal = a.department;
-      bVal = b.department;
-    } else if (sortField === "lastActivity") {
-      aVal = a.lastActivity || "";
-      bVal = b.lastActivity || "";
     } else if (sortField === "role") {
       aVal = a.role;
       bVal = b.role;
+    } else if (sortField === "lastActivity") {
+      aVal = a.lastActivityAt || a.lastLoginAt || "";
+      bVal = b.lastActivityAt || b.lastLoginAt || "";
     }
 
     return sortOrder === "asc"
@@ -277,12 +264,43 @@ export default function EmployeesPage() {
   };
 
   const totalEmployees = employees.length;
-  const activeEmployees = employees.filter((e) => e.status === "active").length;
+  const activeEmployees = employees.filter((e) => e.isActive).length;
   const admins = employees.filter((e) => e.role === "ADMIN").length;
-  const withMobileApp = employees.filter((e) => e.mobileApp).length;
+  const onlineCount = onlineUserIds.size;
 
   const isAllSelected = filteredEmployees.length > 0 && selectedEmployees.size === filteredEmployees.length;
   const isSomeSelected = selectedEmployees.size > 0 && selectedEmployees.size < filteredEmployees.length;
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
+          <p className="text-gray-400">Загрузка сотрудников...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center">
+            <X className="w-8 h-8 text-red-500" />
+          </div>
+          <p className="text-red-400">{error}</p>
+          <button
+            onClick={fetchEmployees}
+            className="flex items-center gap-2 px-4 py-2 bg-violet-500 text-white rounded-lg hover:bg-purple-500"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Повторить
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full min-h-full flex flex-col">
@@ -300,19 +318,19 @@ export default function EmployeesPage() {
                 <span className="text-sm font-bold text-white">{totalEmployees}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/20 rounded-lg">
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                <span className="text-sm text-green-400">Активных</span>
-                <span className="text-sm font-bold text-green-400">{activeEmployees}</span>
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-sm text-green-400">Онлайн</span>
+                <span className="text-sm font-bold text-green-400">{onlineCount}</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-violet-500/20 rounded-lg">
+                <Shield className="w-4 h-4 text-violet-400" />
+                <span className="text-sm text-violet-400">Активных</span>
+                <span className="text-sm font-bold text-violet-400">{activeEmployees}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 rounded-lg">
                 <Crown className="w-4 h-4 text-red-400" />
                 <span className="text-sm text-red-400">Админов</span>
                 <span className="text-sm font-bold text-red-400">{admins}</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-violet-500/20 rounded-lg">
-                <Smartphone className="w-4 h-4 text-violet-400" />
-                <span className="text-sm text-violet-400">С приложением</span>
-                <span className="text-sm font-bold text-violet-400">{withMobileApp}</span>
               </div>
             </div>
           </div>
@@ -330,18 +348,17 @@ export default function EmployeesPage() {
               />
             </div>
 
-            {/* Department Filter */}
+            {/* Role Filter */}
             <select
-              value={filterDepartment}
-              onChange={(e) => setFilterDepartment(e.target.value)}
+              value={filterRole}
+              onChange={(e) => setFilterRole(e.target.value)}
               className="px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10"
             >
-              <option value="all">Все подразделения</option>
-              {departments.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept}
-                </option>
-              ))}
+              <option value="all">Все роли</option>
+              <option value="ADMIN">Администраторы</option>
+              <option value="SUPERVISOR">Супервайзеры</option>
+              <option value="MANAGER">Менеджеры</option>
+              <option value="OPERATOR">Операторы</option>
             </select>
 
             {/* View Toggle */}
@@ -370,15 +387,26 @@ export default function EmployeesPage() {
               </button>
             </div>
 
+            {/* Refresh */}
+            <button
+              onClick={fetchEmployees}
+              className="p-2.5 hover:bg-white/5 rounded-xl"
+            >
+              <RefreshCw className="w-5 h-5 text-gray-400" />
+            </button>
+
             {/* Export */}
             <button className="p-2.5 hover:bg-white/5 rounded-xl">
               <Download className="w-5 h-5 text-gray-400" />
             </button>
 
             {/* Add Button */}
-            <button className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 text-white rounded-xl text-sm font-semibold hover:bg-purple-500 shadow-sm">
-              <Plus className="w-5 h-5" />
-              Добавить сотрудника
+            <button
+              onClick={() => setShowInviteModal(true)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 text-white rounded-xl text-sm font-semibold hover:bg-purple-500 shadow-sm"
+            >
+              <UserPlus className="w-5 h-5" />
+              Пригласить
             </button>
           </div>
         </div>
@@ -422,11 +450,11 @@ export default function EmployeesPage() {
                 </button>
 
                 <button
-                  onClick={() => handleSort("department")}
+                  onClick={() => handleSort("role")}
                   className="w-[150px] flex items-center gap-2 px-4 h-full hover:bg-white/5 border-r border-white/5"
                 >
-                  <span className="font-semibold text-gray-300">Подразделение</span>
-                  {sortField === "department" && (
+                  <span className="font-semibold text-gray-300">Роль</span>
+                  {sortField === "role" && (
                     sortOrder === "asc" ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />
                   )}
                 </button>
@@ -443,18 +471,14 @@ export default function EmployeesPage() {
                   onClick={() => handleSort("lastActivity")}
                   className="w-[170px] flex items-center gap-2 px-4 h-full hover:bg-white/5 border-r border-white/5"
                 >
-                  <span className="font-semibold text-gray-300">Последняя активность</span>
+                  <span className="font-semibold text-gray-300">Последний вход</span>
                   {sortField === "lastActivity" && (
                     sortOrder === "asc" ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />
                   )}
                 </button>
 
-                <div className="w-[120px] flex items-center px-4 h-full border-r border-white/5">
-                  <span className="font-semibold text-gray-300">Моб. прил.</span>
-                </div>
-
-                <div className="w-[120px] flex items-center px-4 h-full">
-                  <span className="font-semibold text-gray-300">ПК прил.</span>
+                <div className="w-[100px] flex items-center px-4 h-full">
+                  <span className="font-semibold text-gray-300">Статус</span>
                 </div>
               </div>
             </div>
@@ -464,6 +488,7 @@ export default function EmployeesPage() {
               {sortedEmployees.map((employee, index) => {
                 const isSelected = selectedEmployees.has(employee.id);
                 const role = roleConfig[employee.role];
+                const isOnline = onlineUserIds.has(employee.id);
 
                 return (
                   <div
@@ -505,26 +530,34 @@ export default function EmployeesPage() {
 
                       {openDropdown === employee.id && (
                         <div className="absolute left-0 top-full mt-1 w-56 glass-card rounded-xl shadow-lg border border-white/10 py-1 z-50">
-                          <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedEmployee(employee); setOpenDropdown(null); }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
+                          >
                             <Eye className="w-4 h-4 text-gray-400" />
                             Просмотреть профиль
                           </button>
-                          <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
-                            <Pencil className="w-4 h-4 text-gray-400" />
-                            Редактировать
-                          </button>
-                          <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
-                            <MessageSquare className="w-4 h-4 text-gray-400" />
-                            Написать сообщение
-                          </button>
-                          <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setRoleChangeEmployee(employee); setOpenDropdown(null); }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
+                          >
                             <UserCog className="w-4 h-4 text-gray-400" />
                             Изменить роль
                           </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleToggleActive(employee); }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
+                          >
+                            <Shield className="w-4 h-4 text-gray-400" />
+                            {employee.isActive ? "Деактивировать" : "Активировать"}
+                          </button>
                           <div className="border-t border-white/5 my-1" />
-                          <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setConfirmDelete(employee); setOpenDropdown(null); }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10"
+                          >
                             <Trash2 className="w-4 h-4 text-red-400" />
-                            Уволить
+                            Удалить
                           </button>
                         </div>
                       )}
@@ -545,7 +578,7 @@ export default function EmployeesPage() {
                               {employee.firstName[0]}{employee.lastName[0]}
                             </div>
                           )}
-                          {employee.status === "active" && (
+                          {isOnline && (
                             <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-[#0B0E14]" />
                           )}
                         </div>
@@ -554,15 +587,17 @@ export default function EmployeesPage() {
                             {employee.firstName} {employee.lastName}
                           </p>
                           <p className={cn("text-xs font-medium", role.color)}>
-                            {employee.position || role.label}
+                            {role.label}
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Department */}
+                    {/* Role */}
                     <div className="w-[150px] px-4 border-r border-white/5">
-                      <span className="text-sm text-gray-300">{employee.department}</span>
+                      <span className={cn("px-2.5 py-1 rounded-lg text-xs font-medium", role.bgColor, role.color)}>
+                        {role.label}
+                      </span>
                     </div>
 
                     {/* Email */}
@@ -583,30 +618,19 @@ export default function EmployeesPage() {
 
                     {/* Last Activity */}
                     <div className="w-[170px] px-4 border-r border-white/5">
-                      <span className="text-sm text-gray-400">{formatDate(employee.lastActivity)}</span>
+                      <span className="text-sm text-gray-400">{formatDate(employee.lastLoginAt)}</span>
                     </div>
 
-                    {/* Mobile App */}
-                    <div className="w-[120px] px-4 border-r border-white/5">
-                      {employee.mobileApp ? (
+                    {/* Status */}
+                    <div className="w-[100px] px-4">
+                      {employee.isActive ? (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-500/20 text-green-400 rounded-lg text-xs font-medium">
-                          <Smartphone className="w-3.5 h-3.5" />
-                          Установлено
+                          Активен
                         </span>
                       ) : (
-                        <span className="text-sm text-gray-500">Не установлено</span>
-                      )}
-                    </div>
-
-                    {/* Desktop App */}
-                    <div className="w-[120px] px-4">
-                      {employee.desktopApp ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-500/20 text-green-400 rounded-lg text-xs font-medium">
-                          <Monitor className="w-3.5 h-3.5" />
-                          Установлено
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-500/20 text-gray-400 rounded-lg text-xs font-medium">
+                          Неактивен
                         </span>
-                      ) : (
-                        <span className="text-sm text-gray-500">Не установлено</span>
                       )}
                     </div>
                   </div>
@@ -630,11 +654,7 @@ export default function EmployeesPage() {
                   <span className="font-medium">ОТМЕЧЕНО:</span> {selectedEmployees.size} / {filteredEmployees.length}
                 </span>
                 <span className="text-sm text-gray-400">
-                  <span className="font-medium">ВСЕГО:</span>{" "}
-                  <button className="text-violet-400 hover:underline">ПОКАЗАТЬ КОЛИЧЕСТВО</button>
-                </span>
-                <span className="text-sm text-gray-400">
-                  <span className="font-medium">СТРАНИЦЫ:</span> 1
+                  <span className="font-medium">ВСЕГО:</span> {totalEmployees}
                 </span>
               </div>
 
@@ -660,20 +680,10 @@ export default function EmployeesPage() {
               <div className="bg-violet-500 text-white px-6 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <span className="font-medium">Выбрано: {selectedEmployees.size}</span>
-                  <button className="px-4 py-1.5 bg-white/20 rounded-lg text-sm font-medium hover:bg-white/30 flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4" />
-                    Создать чат
-                  </button>
                 </div>
                 <div className="flex items-center gap-2">
                   <button className="px-4 py-1.5 bg-white/20 rounded-lg text-sm font-medium hover:bg-white/30">
                     Экспорт
-                  </button>
-                  <button className="px-4 py-1.5 bg-white/20 rounded-lg text-sm font-medium hover:bg-white/30">
-                    Изменить роль
-                  </button>
-                  <button className="px-4 py-1.5 bg-red-500 rounded-lg text-sm font-medium hover:bg-red-600">
-                    Уволить
                   </button>
                 </div>
               </div>
@@ -685,8 +695,8 @@ export default function EmployeesPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {sortedEmployees.map((employee) => {
                 const role = roleConfig[employee.role];
-                const status = statusConfig[employee.status];
                 const RoleIcon = role.icon;
+                const isOnline = onlineUserIds.has(employee.id);
 
                 return (
                   <div
@@ -707,14 +717,14 @@ export default function EmployeesPage() {
                             {employee.firstName[0]}{employee.lastName[0]}
                           </div>
                         )}
-                        {employee.status === "active" && (
+                        {isOnline && (
                           <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-[#0B0E14]" />
                         )}
                       </div>
                       <p className="font-semibold text-white text-center">
                         {employee.firstName} {employee.lastName}
                       </p>
-                      <p className="text-xs text-gray-400 text-center">{employee.position || role.label}</p>
+                      <p className="text-xs text-gray-400 text-center">{role.label}</p>
                     </div>
 
                     <div className="flex items-center justify-center gap-2 mb-4">
@@ -722,16 +732,15 @@ export default function EmployeesPage() {
                         <RoleIcon className="w-3.5 h-3.5" />
                         {role.label}
                       </span>
-                      <span className={cn("px-2.5 py-1 rounded-lg text-xs font-medium", status.bgColor, status.color)}>
-                        {status.label}
+                      <span className={cn(
+                        "px-2.5 py-1 rounded-lg text-xs font-medium",
+                        employee.isActive ? "bg-green-500/20 text-green-400" : "bg-gray-500/20 text-gray-400"
+                      )}>
+                        {employee.isActive ? "Активен" : "Неактивен"}
                       </span>
                     </div>
 
                     <div className="space-y-2 mb-4">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-400">{employee.department}</span>
-                      </div>
                       <div className="flex items-center gap-2">
                         <Mail className="w-4 h-4 text-gray-400" />
                         <span className="text-sm text-violet-400 truncate">{employee.email}</span>
@@ -747,12 +756,14 @@ export default function EmployeesPage() {
                     <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs text-gray-400">
                       <span className="flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5" />
-                        {employee.lastActivity ? formatDate(employee.lastActivity).split(",")[0] : "—"}
+                        {employee.lastLoginAt ? formatDate(employee.lastLoginAt).split(",")[0] : "—"}
                       </span>
-                      <div className="flex items-center gap-1">
-                        <Smartphone className={cn("w-4 h-4", employee.mobileApp ? "text-green-500" : "text-gray-500")} />
-                        <Monitor className={cn("w-4 h-4", employee.desktopApp ? "text-green-500" : "text-gray-500")} />
-                      </div>
+                      {isOnline && (
+                        <span className="flex items-center gap-1 text-green-400">
+                          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                          Онлайн
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
@@ -796,10 +807,7 @@ export default function EmployeesPage() {
                   Задачи
                 </button>
                 <button className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 rounded-lg">
-                  Календарь
-                </button>
-                <button className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 rounded-lg">
-                  Файлы
+                  Активность
                 </button>
               </div>
 
@@ -825,28 +833,16 @@ export default function EmployeesPage() {
                       {/* Status indicator */}
                       <div className={cn(
                         "absolute top-1 right-1 flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-semibold",
-                        selectedEmployee.status === "active"
+                        onlineUserIds.has(selectedEmployee.id)
                           ? "bg-green-500 text-white"
-                          : selectedEmployee.status === "vacation"
-                          ? "bg-amber-500 text-white"
                           : "bg-gray-500 text-white"
                       )}>
                         <span className={cn(
                           "w-1.5 h-1.5 rounded-full",
-                          selectedEmployee.status === "active" ? "bg-white" : "bg-white/60"
+                          onlineUserIds.has(selectedEmployee.id) ? "bg-white animate-pulse" : "bg-white/60"
                         )} />
-                        {selectedEmployee.status === "active" ? "В сети" : selectedEmployee.status === "vacation" ? "Отпуск" : "Не в сети"}
+                        {onlineUserIds.has(selectedEmployee.id) ? "В сети" : "Не в сети"}
                       </div>
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="flex gap-2 mb-4">
-                      <button className="px-4 py-2 text-sm font-medium text-gray-300 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10">
-                        Чат
-                      </button>
-                      <button className="px-4 py-2 text-sm font-medium text-gray-300 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10">
-                        Видеозвонок
-                      </button>
                     </div>
 
                     {/* Role badge */}
@@ -882,82 +878,43 @@ export default function EmployeesPage() {
                           </a>
                         </div>
 
-                        <div>
-                          <p className="text-xs text-gray-400 mb-0.5">Отдел</p>
-                          <p className="text-sm text-white">{selectedEmployee.department}</p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs text-gray-400 mb-0.5">Должность</p>
-                          <p className="text-sm text-white">{selectedEmployee.position || roleConfig[selectedEmployee.role].label}</p>
-                        </div>
-
                         {selectedEmployee.phone && (
                           <div>
-                            <p className="text-xs text-gray-400 mb-0.5">Мобильный</p>
+                            <p className="text-xs text-gray-400 mb-0.5">Телефон</p>
                             <p className="text-sm text-white">{selectedEmployee.phone}</p>
                           </div>
                         )}
+
+                        <div>
+                          <p className="text-xs text-gray-400 mb-0.5">Роль</p>
+                          <p className="text-sm text-white">{roleConfig[selectedEmployee.role].label}</p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-gray-400 mb-0.5">Статус</p>
+                          <p className={cn(
+                            "text-sm",
+                            selectedEmployee.isActive ? "text-green-400" : "text-gray-400"
+                          )}>
+                            {selectedEmployee.isActive ? "Активен" : "Неактивен"}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Additional sections */}
+                {/* Activity section */}
                 <div className="px-6 pb-6 space-y-4">
-                  {/* Apps section */}
-                  <div className="bg-white/5 rounded-xl p-4">
-                    <h4 className="text-sm font-semibold text-white mb-3">Приложения</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className={cn(
-                        "flex flex-col items-center p-3 rounded-xl border-2",
-                        selectedEmployee.mobileApp
-                          ? "bg-green-500/10 border-green-500/30"
-                          : "bg-white/5 border-white/5"
-                      )}>
-                        <Smartphone className={cn(
-                          "w-8 h-8 mb-1",
-                          selectedEmployee.mobileApp ? "text-green-500" : "text-gray-500"
-                        )} />
-                        <p className="text-xs font-medium text-gray-300">Мобильное</p>
-                        <p className={cn(
-                          "text-[10px]",
-                          selectedEmployee.mobileApp ? "text-green-400" : "text-gray-500"
-                        )}>
-                          {selectedEmployee.mobileApp ? "Установлено" : "Не установлено"}
-                        </p>
-                      </div>
-                      <div className={cn(
-                        "flex flex-col items-center p-3 rounded-xl border-2",
-                        selectedEmployee.desktopApp
-                          ? "bg-green-500/10 border-green-500/30"
-                          : "bg-white/5 border-white/5"
-                      )}>
-                        <Monitor className={cn(
-                          "w-8 h-8 mb-1",
-                          selectedEmployee.desktopApp ? "text-green-500" : "text-gray-500"
-                        )} />
-                        <p className="text-xs font-medium text-gray-300">Десктоп</p>
-                        <p className={cn(
-                          "text-[10px]",
-                          selectedEmployee.desktopApp ? "text-green-400" : "text-gray-500"
-                        )}>
-                          {selectedEmployee.desktopApp ? "Установлено" : "Не установлено"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Activity section */}
                   <div className="bg-white/5 rounded-xl p-4">
                     <h4 className="text-sm font-semibold text-white mb-3">Активность</h4>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-400">Последняя активность</span>
-                        <span className="text-sm text-white">{formatDate(selectedEmployee.lastActivity)}</span>
+                        <span className="text-xs text-gray-400">Последний вход</span>
+                        <span className="text-sm text-white">{formatDate(selectedEmployee.lastLoginAt)}</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-400">В компании с</span>
+                        <span className="text-xs text-gray-400">Зарегистрирован</span>
                         <span className="text-sm text-white">{formatShortDate(selectedEmployee.createdAt)}</span>
                       </div>
                     </div>
@@ -968,20 +925,154 @@ export default function EmployeesPage() {
               {/* Actions Footer */}
               <div className="p-4 border-t border-white/5 bg-white/[0.02]">
                 <div className="flex gap-3">
-                  <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-500 text-white rounded-lg font-medium hover:bg-purple-500">
-                    <MessageSquare className="w-4 h-4" />
-                    Написать сообщение
+                  <button
+                    onClick={() => setRoleChangeEmployee(selectedEmployee)}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-500 text-white rounded-lg font-medium hover:bg-purple-500"
+                  >
+                    <UserCog className="w-4 h-4" />
+                    Изменить роль
                   </button>
-                  <button className="px-4 py-2.5 text-gray-400 bg-white/5 border border-white/10 rounded-lg font-medium hover:bg-white/10">
-                    <Pencil className="w-4 h-4" />
+                  <button
+                    onClick={() => handleToggleActive(selectedEmployee)}
+                    className="px-4 py-2.5 text-gray-400 bg-white/5 border border-white/10 rounded-lg font-medium hover:bg-white/10"
+                  >
+                    <Shield className="w-4 h-4" />
                   </button>
-                  <button className="px-4 py-2.5 text-red-400 bg-white/5 border border-white/10 rounded-lg font-medium hover:bg-red-500/10 hover:border-red-500/30">
+                  <button
+                    onClick={() => setConfirmDelete(selectedEmployee)}
+                    className="px-4 py-2.5 text-red-400 bg-white/5 border border-white/10 rounded-lg font-medium hover:bg-red-500/10 hover:border-red-500/30"
+                  >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             </div>
           </>
+        )}
+
+        {/* Invite Modal */}
+        {showInviteModal && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/50 z-[60]"
+              onClick={() => setShowInviteModal(false)}
+            />
+            <div className="fixed inset-0 flex items-center justify-center z-[70] p-4">
+              <div className="w-full max-w-md glass-card rounded-2xl shadow-2xl border border-white/10">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+                  <h3 className="text-lg font-semibold text-white">Пригласить сотрудника</h3>
+                  <button
+                    onClick={() => setShowInviteModal(false)}
+                    className="w-8 h-8 flex items-center justify-center hover:bg-white/5 rounded-lg"
+                  >
+                    <X className="w-4 h-4 text-gray-400" />
+                  </button>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                    <input
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      placeholder="email@example.com"
+                      className="w-full px-4 py-3 bg-white/5 rounded-xl text-white border-0 focus:ring-2 focus:ring-violet-500 placeholder:text-gray-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Роль</label>
+                    <select
+                      value={inviteRole}
+                      onChange={(e) => setInviteRole(e.target.value)}
+                      className="w-full px-4 py-3 bg-white/5 rounded-xl text-white border-0 focus:ring-2 focus:ring-violet-500"
+                    >
+                      <option value="OPERATOR">Оператор</option>
+                      <option value="MANAGER">Менеджер</option>
+                      <option value="SUPERVISOR">Супервайзер</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-3 px-6 py-4 border-t border-white/5">
+                  <button
+                    onClick={() => setShowInviteModal(false)}
+                    className="flex-1 px-4 py-2.5 text-gray-400 bg-white/5 rounded-lg font-medium hover:bg-white/10"
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    onClick={handleInvite}
+                    disabled={inviting || !inviteEmail.trim()}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-500 text-white rounded-lg font-medium hover:bg-purple-500 disabled:opacity-50"
+                  >
+                    {inviting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                    Отправить
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Role Change Modal */}
+        {roleChangeEmployee && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/50 z-[80]"
+              onClick={() => setRoleChangeEmployee(null)}
+            />
+            <div className="fixed inset-0 flex items-center justify-center z-[90] p-4">
+              <div className="w-full max-w-md glass-card rounded-2xl shadow-2xl border border-white/10">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+                  <h3 className="text-lg font-semibold text-white">Изменить роль</h3>
+                  <button
+                    onClick={() => setRoleChangeEmployee(null)}
+                    className="w-8 h-8 flex items-center justify-center hover:bg-white/5 rounded-lg"
+                  >
+                    <X className="w-4 h-4 text-gray-400" />
+                  </button>
+                </div>
+                <div className="p-6">
+                  <p className="text-sm text-gray-400 mb-4">
+                    Изменить роль для {roleChangeEmployee.firstName} {roleChangeEmployee.lastName}
+                  </p>
+                  <div className="space-y-2">
+                    {Object.entries(roleConfig).map(([key, config]) => (
+                      <button
+                        key={key}
+                        onClick={() => handleChangeRole(roleChangeEmployee, key)}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors",
+                          roleChangeEmployee.role === key
+                            ? "border-violet-500 bg-violet-500/10"
+                            : "border-white/10 hover:border-white/20 hover:bg-white/5"
+                        )}
+                      >
+                        <config.icon className={cn("w-5 h-5", config.color)} />
+                        <span className="text-white font-medium">{config.label}</span>
+                        {roleChangeEmployee.role === key && (
+                          <span className="ml-auto text-xs text-violet-400">Текущая</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Delete Confirmation */}
+        {confirmDelete && (
+          <ConfirmDialog
+            isOpen={true}
+            onClose={() => setConfirmDelete(null)}
+            onConfirm={() => handleDelete(confirmDelete)}
+            title="Удалить сотрудника?"
+            description={`Вы уверены, что хотите удалить ${confirmDelete.firstName} ${confirmDelete.lastName}? Это действие нельзя отменить.`}
+            confirmText="Удалить"
+            cancelText="Отмена"
+            variant="danger"
+          />
         )}
       </div>
     </div>

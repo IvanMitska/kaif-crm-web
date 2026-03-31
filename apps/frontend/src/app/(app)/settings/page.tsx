@@ -8,7 +8,6 @@ import {
   Palette,
   Globe,
   CreditCard,
-  Users,
   Building,
   Camera,
   Check,
@@ -23,7 +22,6 @@ import {
   Monitor,
   Languages,
   Plus,
-  MoreHorizontal,
   LogOut,
   ExternalLink,
   Crown,
@@ -63,7 +61,6 @@ const tabs = [
   { id: "security", name: "Безопасность", icon: Shield },
   { id: "appearance", name: "Внешний вид", icon: Palette },
   { id: "integrations", name: "Интеграции", icon: Globe },
-  { id: "team", name: "Команда", icon: Users },
   { id: "company", name: "Компания", icon: Building },
   { id: "billing", name: "Тарифы", icon: CreditCard },
 ];
@@ -77,12 +74,6 @@ const integrations = [
   { id: "phone", name: "IP-телефония", description: "Звонки и записи разговоров", icon: Phone, status: "disconnected", color: "bg-amber-500" },
 ];
 
-const teamMembers = [
-  { id: 1, name: "Админ Системы", email: "admin@kaifcrm.ru", role: "Администратор", status: "online", avatar: "АС" },
-  { id: 2, name: "Иван Менеджеров", email: "manager@kaifcrm.ru", role: "Менеджер", status: "online", avatar: "ИМ" },
-  { id: 3, name: "Петр Продажников", email: "petr@kaifcrm.ru", role: "Менеджер", status: "offline", avatar: "ПП" },
-  { id: 4, name: "Анна Маркетолог", email: "anna@kaifcrm.ru", role: "Маркетолог", status: "offline", avatar: "АМ" },
-];
 
 // Toggle Switch Component
 function Toggle({ checked, onChange, disabled = false }: { checked: boolean; onChange: (val: boolean) => void; disabled?: boolean }) {
@@ -509,55 +500,6 @@ export default function SettingsPage() {
                 onClick={() => {}}
               />
             </Section>
-          </div>
-        );
-
-      case "team":
-        return (
-          <div className="space-y-6">
-            {/* Stats */}
-            <div className="flex items-center gap-3">
-              <div className="px-3 py-1.5 bg-violet-500/20 text-violet-400 rounded-lg text-sm font-medium">
-                {teamMembers.length} из 10 пользователей
-              </div>
-              <div className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-sm font-medium">
-                {teamMembers.filter(m => m.status === "online").length} онлайн
-              </div>
-            </div>
-
-            <Section title="Участники команды">
-              {teamMembers.map((member) => (
-                <div key={member.id} className="flex items-center gap-4 px-4 py-3">
-                  <div className="relative">
-                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                      {member.avatar}
-                    </div>
-                    <span className={cn(
-                      "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#0a0a0f]",
-                      member.status === "online" ? "bg-green-500" : "bg-gray-500"
-                    )} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-white">{member.name}</p>
-                    <p className="text-xs text-gray-400">{member.email}</p>
-                  </div>
-                  <span className={cn(
-                    "px-2.5 py-1 rounded-lg text-xs font-medium",
-                    member.role === "Администратор" ? "bg-purple-500/20 text-purple-400" : "bg-white/10 text-gray-400"
-                  )}>
-                    {member.role}
-                  </span>
-                  <button className="p-2 hover:bg-white/5 rounded-lg">
-                    <MoreHorizontal className="w-5 h-5 text-gray-400" />
-                  </button>
-                </div>
-              ))}
-            </Section>
-
-            <button className="w-full py-3 bg-violet-500 hover:bg-purple-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2">
-              <Plus className="w-5 h-5" />
-              Пригласить участника
-            </button>
           </div>
         );
 

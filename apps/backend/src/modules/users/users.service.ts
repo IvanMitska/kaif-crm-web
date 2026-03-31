@@ -202,6 +202,42 @@ export class UsersService {
     return { message: 'Пользователь успешно удален' };
   }
 
+  async getOnlineUsers() {
+    // Users active in the last 5 minutes are considered online
+    const fiveMinutesAgo = new Date();
+    fiveMinutesAgo.setMinutes(fiveMinutesAgo.getMinutes() - 5);
+
+    const onlineUsers = await this.prisma.user.findMany({
+      where: {
+        isActive: true,
+        lastActivityAt: {
+          gte: fiveMinutesAgo,
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        avatar: true,
+        role: true,
+        lastActivityAt: true,
+      },
+    });
+
+    return {
+      data: onlineUsers,
+      count: onlineUsers.length,
+    };
+  }
+
+  async updateActivity(userId: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { lastActivityAt: new Date() },
+    });
+  }
+
   async getUserStats(id: string) {
     const user = await this.findOne(id);
 
