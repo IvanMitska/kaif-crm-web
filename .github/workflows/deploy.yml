@@ -16,7 +16,7 @@ jobs:
     if: github.ref == 'refs/heads/develop'
     environment:
       name: staging
-      url: https://staging.kaifcrm.ru
+      url: https://staging.sintara-crm.com
     steps:
       - uses: actions/checkout@v4
       
@@ -27,7 +27,7 @@ jobs:
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
-            cd /opt/kaif-crm
+            cd /opt/sintara-crm
             git pull origin develop
             docker-compose -f docker-compose.staging.yml pull
             docker-compose -f docker-compose.staging.yml up -d
@@ -39,7 +39,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     environment:
       name: production
-      url: https://kaifcrm.ru
+      url: https://sintara-crm.com
     steps:
       - uses: actions/checkout@v4
       
@@ -50,7 +50,7 @@ jobs:
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
           script: |
-            cd /opt/kaif-crm
+            cd /opt/sintara-crm
             git pull origin main
             docker-compose -f docker-compose.prod.yml pull
             docker-compose -f docker-compose.prod.yml up -d --no-deps --scale backend=2
@@ -59,7 +59,7 @@ jobs:
       - name: Health check
         run: |
           sleep 30
-          curl -f https://kaifcrm.ru/health || exit 1
+          curl -f https://sintara-crm.com/health || exit 1
           
       - name: Notify deployment
         uses: 8398a7/action-slack@v3

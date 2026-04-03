@@ -1,7 +1,7 @@
 {
-  "name": "@kaif-crm/backend",
+  "name": "@sintara-crm/backend",
   "version": "0.1.0",
-  "description": "KAIF CRM Backend Service",
+  "description": "Sintara CRM Backend Service",
   "private": true,
   "scripts": {
     "build": "prisma generate && nest build",

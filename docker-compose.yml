@@ -3,33 +3,33 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: kaif-crm-postgres
+    container_name: sintara-crm-postgres
     environment:
-      POSTGRES_USER: kaifcrm
-      POSTGRES_PASSWORD: kaifcrm
-      POSTGRES_DB: kaifcrm
+      POSTGRES_USER: sintaracrm
+      POSTGRES_PASSWORD: sintaracrm
+      POSTGRES_DB: sintaracrm
     ports:
       - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - kaif-network
+      - sintara-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kaifcrm"]
+      test: ["CMD-SHELL", "pg_isready -U sintaracrm"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: kaif-crm-redis
+    container_name: sintara-crm-redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
-      - kaif-network
+      - sintara-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -39,7 +39,7 @@ services:
 
   minio:
     image: minio/minio:latest
-    container_name: kaif-crm-minio
+    container_name: sintara-crm-minio
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
@@ -49,7 +49,7 @@ services:
     volumes:
       - minio_data:/data
     networks:
-      - kaif-network
+      - sintara-network
     command: server /data --console-address ":9001"
     restart: unless-stopped
     healthcheck:
@@ -63,10 +63,10 @@ services:
       context: .
       dockerfile: ./infrastructure/docker/backend/Dockerfile
       target: development
-    container_name: kaif-crm-backend
+    container_name: sintara-crm-backend
     environment:
       NODE_ENV: development
-      DATABASE_URL: postgresql://kaifcrm:kaifcrm@postgres:5432/kaifcrm?schema=public
+      DATABASE_URL: postgresql://sintaracrm:sintaracrm@postgres:5432/sintaracrm?schema=public
       REDIS_HOST: redis
       REDIS_PORT: 6379
       MINIO_ENDPOINT: minio
@@ -81,21 +81,21 @@ services:
       - /app/node_modules
       - /app/apps/backend/node_modules
     networks:
-      - kaif-network
+      - sintara-network
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
-    command: pnpm --filter @kaif-crm/backend dev
+    command: pnpm --filter @sintara-crm/backend dev
 
   frontend:
     build:
       context: .
       dockerfile: ./infrastructure/docker/frontend/Dockerfile
       target: development
-    container_name: kaif-crm-frontend
+    container_name: sintara-crm-frontend
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:3001
       NEXT_PUBLIC_WEBSOCKET_URL: ws://localhost:3001
@@ -108,15 +108,15 @@ services:
       - /app/apps/frontend/node_modules
       - /app/apps/frontend/.next
     networks:
-      - kaif-network
+      - sintara-network
     depends_on:
       - backend
     restart: unless-stopped
-    command: pnpm --filter @kaif-crm/frontend dev
+    command: pnpm --filter @sintara-crm/frontend dev
 
   nginx:
     image: nginx:alpine
-    container_name: kaif-crm-nginx
+    container_name: sintara-crm-nginx
     ports:
       - "80:80"
       - "443:443"
@@ -124,7 +124,7 @@ services:
       - ./infrastructure/docker/nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./infrastructure/docker/nginx/conf.d:/etc/nginx/conf.d
     networks:
-      - kaif-network
+      - sintara-network
     depends_on:
       - backend
       - frontend
@@ -136,5 +136,5 @@ volumes:
   minio_data:
 
 networks:
-  kaif-network:
+  sintara-network:
     driver: bridge

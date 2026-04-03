@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/auth";
 import Link from "next/link";
+import Image from "next/image";
 import {
   LayoutDashboard,
   Briefcase,
@@ -23,7 +24,6 @@ import {
   Plus,
   CalendarClock,
   UserCog,
-  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -171,18 +171,26 @@ export default function AppLayout({
         )}>
           {(sidebarOpen || isMobile) ? (
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/30">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
+              <Image
+                src="/logo-icon.png"
+                alt="Sintara CRM"
+                width={36}
+                height={36}
+                className="rounded-xl shadow-lg shadow-purple-500/30"
+              />
               <div>
-                <h1 className="text-lg font-bold text-white tracking-tight">KAIF</h1>
+                <h1 className="text-lg font-bold text-white tracking-tight">Sintara</h1>
                 <p className="text-[10px] text-gray-500 font-medium -mt-0.5">CRM SYSTEM</p>
               </div>
             </div>
           ) : (
-            <div className="w-9 h-9 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/30">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
+            <Image
+              src="/logo-icon.png"
+              alt="Sintara CRM"
+              width={36}
+              height={36}
+              className="rounded-xl shadow-lg shadow-purple-500/30"
+            />
           )}
 
           <button

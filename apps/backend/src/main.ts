@@ -42,8 +42,8 @@ async function bootstrap() {
   // Swagger documentation
   if (configService.get('NODE_ENV') !== 'production') {
     const config = new DocumentBuilder()
-      .setTitle('KAIF CRM API')
-      .setDescription('API документация для KAIF CRM')
+      .setTitle('Sintara CRM API')
+      .setDescription('API документация для Sintara CRM')
       .setVersion('1.0')
       .addBearerAuth()
       .addTag('auth', 'Авторизация и аутентификация')
@@ -63,7 +63,7 @@ async function bootstrap() {
   const port = configService.get('PORT', 3001);
   await app.listen(port);
 
-  console.log(`KAIF CRM Backend running on port ${port}`);
+  console.log(`Sintara CRM Backend running on port ${port}`);
   console.log(`API docs: http://localhost:${port}/api/docs`);
 }
 

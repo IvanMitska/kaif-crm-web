@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import {
   User,
   Bell,
@@ -508,12 +509,16 @@ export default function SettingsPage() {
           <div className="space-y-6">
             <Section>
               <div className="p-6 flex items-center gap-6">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
-                  K
-                </div>
+                <Image
+                  src="/logo-icon.png"
+                  alt="Sintara CRM"
+                  width={80}
+                  height={80}
+                  className="rounded-2xl"
+                />
                 <div>
-                  <h3 className="text-lg font-semibold text-white">KAIF CRM</h3>
-                  <p className="text-sm text-gray-400">kaifcrm.ru</p>
+                  <h3 className="text-lg font-semibold text-white">Sintara CRM</h3>
+                  <p className="text-sm text-gray-400">sintara-crm.com</p>
                   <button className="text-sm text-violet-400 font-medium mt-1">Изменить логотип</button>
                 </div>
               </div>
@@ -525,7 +530,7 @@ export default function SettingsPage() {
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">Название компании</label>
                   <input
                     type="text"
-                    defaultValue="KAIF CRM"
+                    defaultValue="Sintara CRM"
                     className="w-full px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10"
                   />
                 </div>

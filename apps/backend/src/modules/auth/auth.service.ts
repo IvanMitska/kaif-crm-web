@@ -171,7 +171,7 @@ export class AuthService {
 
   async enable2FA(userId: string) {
     const secret = speakeasy.generateSecret({
-      name: `KAIF CRM (${userId})`,
+      name: `Sintara CRM (${userId})`,
       length: 32,
     });
 

@@ -8,7 +8,7 @@ import { Toaster } from "@/components/ui/sonner";
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
 
 export const metadata: Metadata = {
-  title: "KAIF CRM - Система управления взаимоотношениями с клиентами",
+  title: "Sintara CRM - Система управления взаимоотношениями с клиентами",
   description: "Современная CRM-система с омниканальной коммуникацией",
 };
 

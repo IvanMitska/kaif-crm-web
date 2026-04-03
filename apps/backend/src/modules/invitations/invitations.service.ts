@@ -71,7 +71,7 @@ export class InvitationsService {
       await this.emailService.sendInvitationEmail({
         to: existingInvitation.email,
         inviterName: `${existingInvitation.invitedBy.firstName} ${existingInvitation.invitedBy.lastName}`,
-        organizationName: existingInvitation.organization?.name || 'KAIF CRM',
+        organizationName: existingInvitation.organization?.name || 'Sintara CRM',
         role: existingInvitation.role,
         inviteUrl,
         expiresAt,
@@ -113,7 +113,7 @@ export class InvitationsService {
     await this.emailService.sendInvitationEmail({
       to: invitation.email,
       inviterName: `${invitation.invitedBy.firstName} ${invitation.invitedBy.lastName}`,
-      organizationName: invitation.organization?.name || 'KAIF CRM',
+      organizationName: invitation.organization?.name || 'Sintara CRM',
       role: invitation.role,
       inviteUrl,
       expiresAt: invitation.expiresAt,
@@ -343,7 +343,7 @@ export class InvitationsService {
     await this.emailService.sendInvitationEmail({
       to: invitation.email,
       inviterName: `${invitation.invitedBy.firstName} ${invitation.invitedBy.lastName}`,
-      organizationName: updated.organization?.name || 'KAIF CRM',
+      organizationName: updated.organization?.name || 'Sintara CRM',
       role: invitation.role,
       inviteUrl,
       expiresAt,

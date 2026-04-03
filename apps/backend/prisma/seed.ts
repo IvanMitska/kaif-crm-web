@@ -9,10 +9,10 @@ async function main() {
   // Создаем администратора
   const adminPassword = await argon2.hash('admin123');
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@kaifcrm.ru' },
+    where: { email: 'admin@sintara-crm.com' },
     update: {},
     create: {
-      email: 'admin@kaifcrm.ru',
+      email: 'admin@sintara-crm.com',
       password: adminPassword,
       firstName: 'Админ',
       lastName: 'Системы',
@@ -26,10 +26,10 @@ async function main() {
   // Создаем менеджера
   const managerPassword = await argon2.hash('manager123');
   const manager = await prisma.user.upsert({
-    where: { email: 'manager@kaifcrm.ru' },
+    where: { email: 'manager@sintara-crm.com' },
     update: {},
     create: {
-      email: 'manager@kaifcrm.ru',
+      email: 'manager@sintara-crm.com',
       password: managerPassword,
       firstName: 'Иван',
       lastName: 'Менеджеров',
@@ -281,8 +281,8 @@ async function main() {
 
   console.log('🎉 База данных успешно заполнена!');
   console.log('\n📋 Данные для входа:');
-  console.log('Администратор: admin@kaifcrm.ru / admin123');
-  console.log('Менеджер: manager@kaifcrm.ru / manager123');
+  console.log('Администратор: admin@sintara-crm.com / admin123');
+  console.log('Менеджер: manager@sintara-crm.com / manager123');
 }
 
 main()

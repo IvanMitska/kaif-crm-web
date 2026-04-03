@@ -191,8 +191,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ secrets.DOCKER_USERNAME }}/kaif-crm-backend
-            ${{ secrets.DOCKER_USERNAME }}/kaif-crm-frontend
+            ${{ secrets.DOCKER_USERNAME }}/sintara-crm-backend
+            ${{ secrets.DOCKER_USERNAME }}/sintara-crm-frontend
           tags: |
             type=ref,event=branch
             type=sha,prefix={{branch}}-
@@ -204,7 +204,7 @@ jobs:
           context: .
           file: ./infrastructure/docker/backend/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/kaif-crm-backend:${{ github.sha }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/sintara-crm-backend:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           
@@ -214,6 +214,6 @@ jobs:
           context: .
           file: ./infrastructure/docker/frontend/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/kaif-crm-frontend:${{ github.sha }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/sintara-crm-frontend:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

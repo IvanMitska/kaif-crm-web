@@ -10,7 +10,7 @@ export class EmailService {
 
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('RESEND_API_KEY');
-    this.fromEmail = this.configService.get<string>('EMAIL_FROM') || 'KAIF CRM <onboarding@resend.dev>';
+    this.fromEmail = this.configService.get<string>('EMAIL_FROM') || 'Sintara CRM <onboarding@resend.dev>';
 
     if (apiKey) {
       this.resend = new Resend(apiKey);
@@ -37,7 +37,7 @@ export class EmailService {
       OPERATOR: 'Оператор',
     };
 
-    const subject = `Приглашение в ${organizationName} - KAIF CRM`;
+    const subject = `Приглашение в ${organizationName} - Sintara CRM`;
     const html = `
 <!DOCTYPE html>
 <html>
@@ -48,7 +48,7 @@ export class EmailService {
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px;">
   <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
     <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 32px; text-align: center;">
-      <h1 style="color: #ffffff; margin: 0; font-size: 28px;">KAIF CRM</h1>
+      <h1 style="color: #ffffff; margin: 0; font-size: 28px;">Sintara CRM</h1>
     </div>
     <div style="padding: 32px;">
       <h2 style="color: #1f2937; margin: 0 0 16px;">Вас пригласили в команду!</h2>
