@@ -7,9 +7,6 @@ const nextConfig = {
     // TODO: Remove after fixing all TypeScript errors
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   images: {
     remotePatterns: [
       {

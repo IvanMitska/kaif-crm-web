@@ -3,12 +3,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import {
   User,
   Mail,
   Lock,
-  Phone,
   Eye,
   EyeOff,
   Loader2,
@@ -17,6 +17,7 @@ import {
   ArrowRight,
   Shield,
 } from "lucide-react";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { invitationsApi } from "@/lib/api";
 
 interface InvitationData {
@@ -189,15 +190,19 @@ export default function InvitePage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md relative z-10"
+        className="w-full max-w-lg relative z-10"
       >
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 sm:mb-8">
           <div className="inline-flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-xl">K</span>
-            </div>
-            <span className="text-2xl font-bold text-white">KAIF CRM</span>
+            <Image
+              src="/logo-icon.png"
+              alt="Sintara CRM"
+              width={56}
+              height={56}
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl"
+            />
+            <span className="text-2xl font-bold text-white">Sintara CRM</span>
           </div>
           <h1 className="text-xl font-semibold text-white">Завершите регистрацию</h1>
           <p className="text-gray-400 mt-2">
@@ -206,7 +211,7 @@ export default function InvitePage() {
         </div>
 
         {/* Card */}
-        <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-8">
+        <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6 sm:p-8">
           {/* Email & Role info */}
           <div className="mb-6 p-4 bg-white/5 rounded-xl">
             <div className="flex items-center gap-3 mb-3">
@@ -273,16 +278,11 @@ export default function InvitePage() {
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Телефон <span className="text-gray-500">(необязательно)</span>
               </label>
-              <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+7 999 123 4567"
-                  className="w-full pl-12 pr-4 py-3 bg-white/5 rounded-xl text-white border border-white/10 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 placeholder:text-gray-500"
-                />
-              </div>
+              <PhoneInput
+                value={phone}
+                onChange={(value) => setPhone(value)}
+                placeholder="999 123 4567"
+              />
             </div>
 
             {/* Password */}

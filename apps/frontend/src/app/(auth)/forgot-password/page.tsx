@@ -56,7 +56,7 @@ export default function ForgotPasswordPage() {
 
   if (isSuccess) {
     return (
-      <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-8 shadow-2xl shadow-black/20">
+      <div className="bg-white/[0.03] border border-white/10 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/20">
         <motion.div
           className="text-center"
           initial={{ opacity: 0, scale: 0.9 }}
@@ -82,7 +82,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-8 shadow-2xl shadow-black/20">
+    <div className="bg-white/[0.03] border border-white/10 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/20">
       <div className="text-center mb-8">
         <motion.h2
           className="text-2xl font-bold text-white mb-2"

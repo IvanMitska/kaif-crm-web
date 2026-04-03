@@ -18,9 +18,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Icons } from "@/components/icons";
 import { useAuthStore } from "@/store/auth";
-import { Mail, Lock, User, Phone, Building2 } from "lucide-react";
+import { Mail, Lock, User, Building2 } from "lucide-react";
 
 const registerSchema = z.object({
   email: z.string().email("Некорректный email"),
@@ -78,7 +79,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-8 shadow-2xl shadow-black/20">
+    <div className="bg-white/[0.03] border border-white/10 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/20">
       <div className="text-center mb-6">
         <motion.h2
           className="text-2xl font-bold text-white mb-2"
@@ -221,16 +222,12 @@ export default function RegisterPage() {
                     Телефон <span className="text-gray-500">(необязательно)</span>
                   </FormLabel>
                   <FormControl>
-                    <div className="relative">
-                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                      <Input
-                        type="tel"
-                        placeholder="+7 999 123-45-67"
-                        disabled={isLoading}
-                        className="pl-12 h-11 bg-white/5 border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:border-violet-500 focus:ring-violet-500/20 transition-all"
-                        {...field}
-                      />
-                    </div>
+                    <PhoneInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      disabled={isLoading}
+                      placeholder="999 123-45-67"
+                    />
                   </FormControl>
                   <FormMessage className="text-red-400 text-xs" />
                 </FormItem>
