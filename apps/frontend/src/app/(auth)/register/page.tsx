@@ -78,7 +78,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <>
+    <div className="animate-stagger">
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-white mb-2">
           Создать аккаунт
@@ -279,6 +279,6 @@ export default function RegisterPage() {
           условиями использования
         </Link>
       </p>
-    </>
+    </div>
   );
 }

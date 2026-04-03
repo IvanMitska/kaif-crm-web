@@ -1,15 +1,14 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 import Image from "next/image";
 import { memo, useMemo } from "react";
 
-// Статичный фон без blur - выносим в отдельный мемоизированный компонент
+// Статичный фон - мемоизированный компонент
 const Background = memo(function Background() {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      {/* Градиенты вместо blur - намного легче для GPU */}
+      {/* Градиенты вместо blur */}
       <div
         className="absolute top-0 left-0 w-full h-full"
         style={{
@@ -33,12 +32,6 @@ const Background = memo(function Background() {
   );
 });
 
-// Варианты анимации
-const fadeIn = {
-  hidden: { opacity: 0, y: 15 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
-};
-
 export default function AuthLayout({
   children,
 }: {
@@ -61,12 +54,7 @@ export default function AuthLayout({
 
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 xl:w-[55%] relative z-10 flex-col items-center justify-center px-8 xl:px-12 pb-16">
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={fadeIn}
-          className="text-center max-w-2xl"
-        >
+        <div className="text-center max-w-2xl animate-fade-in-up">
           {/* Logo */}
           <div className="mb-10">
             <Image
@@ -90,19 +78,14 @@ export default function AuthLayout({
           <p className="text-xl text-gray-400 leading-relaxed">
             {content.description}
           </p>
-        </motion.div>
+        </div>
       </div>
 
       {/* Right side - Form */}
       <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-12 relative z-10">
         <div className="w-full max-w-lg">
           {/* Mobile logo */}
-          <motion.div
-            className="lg:hidden flex justify-center mb-10"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-          >
+          <div className="lg:hidden flex justify-center mb-10 animate-fade-in">
             <Image
               src="/logo.png"
               alt="Sintara CRM"
@@ -111,24 +94,94 @@ export default function AuthLayout({
               className="w-auto h-44 sm:h-48"
               priority
             />
-          </motion.div>
+          </div>
 
-          {/* Form card - без backdrop-blur, просто полупрозрачный фон */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
-            className="bg-[#12121a]/90 rounded-3xl border border-white/[0.06] p-8 shadow-2xl shadow-black/50"
-          >
+          {/* Form card */}
+          <div className="bg-[#12121a]/90 rounded-3xl border border-white/[0.06] p-8 shadow-2xl shadow-black/50 animate-slide-up">
             {children}
-          </motion.div>
+          </div>
 
           {/* Footer */}
-          <p className="mt-8 text-center text-sm text-gray-600">
+          <p className="mt-8 text-center text-sm text-gray-600 animate-fade-in-delay">
             © 2026 Sintara CRM. Все права защищены.
           </p>
         </div>
       </div>
+
+      {/* Global CSS animations - GPU accelerated */}
+      <style jsx global>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes staggerFadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fade-in {
+          animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        .animate-fade-in-delay {
+          opacity: 0;
+          animation: fadeIn 0.5s ease-out 0.4s forwards;
+        }
+
+        .animate-fade-in-up {
+          animation: fadeInUp 0.6s ease-out forwards;
+        }
+
+        .animate-slide-up {
+          animation: slideUp 0.5s ease-out forwards;
+        }
+
+        /* Stagger animation for form fields */
+        .animate-stagger > * {
+          opacity: 0;
+          animation: staggerFadeIn 0.4s ease-out forwards;
+        }
+
+        .animate-stagger > *:nth-child(1) { animation-delay: 0.05s; }
+        .animate-stagger > *:nth-child(2) { animation-delay: 0.1s; }
+        .animate-stagger > *:nth-child(3) { animation-delay: 0.15s; }
+        .animate-stagger > *:nth-child(4) { animation-delay: 0.2s; }
+        .animate-stagger > *:nth-child(5) { animation-delay: 0.25s; }
+        .animate-stagger > *:nth-child(6) { animation-delay: 0.3s; }
+        .animate-stagger > *:nth-child(7) { animation-delay: 0.35s; }
+        .animate-stagger > *:nth-child(8) { animation-delay: 0.4s; }
+        .animate-stagger > *:nth-child(9) { animation-delay: 0.45s; }
+        .animate-stagger > *:nth-child(10) { animation-delay: 0.5s; }
+      `}</style>
     </div>
   );
 }

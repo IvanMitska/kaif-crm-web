@@ -65,7 +65,7 @@ export default function LoginPage() {
   }
 
   return (
-    <>
+    <div className="animate-stagger">
       <div className="text-center mb-8">
         <h2 className="text-2xl font-bold text-white mb-2">
           Добро пожаловать
@@ -183,6 +183,6 @@ export default function LoginPage() {
           </Link>
         </p>
       </div>
-    </>
+    </div>
   );
 }
