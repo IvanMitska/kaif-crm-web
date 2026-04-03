@@ -7,7 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -66,92 +65,66 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="bg-white/[0.03] border border-white/10 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/20">
+    <>
       <div className="text-center mb-8">
-        <motion.h2
-          className="text-2xl font-bold text-white mb-2"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
+        <h2 className="text-2xl font-bold text-white mb-2">
           Добро пожаловать
-        </motion.h2>
-        <motion.p
-          className="text-gray-400"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.15 }}
-        >
+        </h2>
+        <p className="text-gray-400">
           Войдите в свой аккаунт
-        </motion.p>
+        </p>
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-gray-300 text-sm font-medium">Email</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                      <Input
-                        type="email"
-                        placeholder="user@example.com"
-                        disabled={isLoading}
-                        className="pl-12 h-12 bg-white/5 border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:border-violet-500 focus:ring-violet-500/20 transition-all"
-                        {...field}
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage className="text-red-400" />
-                </FormItem>
-              )}
-            />
-          </motion.div>
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-gray-300 text-sm font-medium">Email</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                    <Input
+                      type="email"
+                      placeholder="user@example.com"
+                      disabled={isLoading}
+                      className="pl-12 h-12 bg-white/5 border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:border-violet-500 focus:ring-violet-500/20 transition-colors"
+                      {...field}
+                    />
+                  </div>
+                </FormControl>
+                <FormMessage className="text-red-400" />
+              </FormItem>
+            )}
+          />
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-          >
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-gray-300 text-sm font-medium">Пароль</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                      <Input
-                        type="password"
-                        placeholder="••••••••"
-                        disabled={isLoading}
-                        className="pl-12 h-12 bg-white/5 border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:border-violet-500 focus:ring-violet-500/20 transition-all"
-                        {...field}
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage className="text-red-400" />
-                </FormItem>
-              )}
-            />
-          </motion.div>
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-gray-300 text-sm font-medium">Пароль</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                    <Input
+                      type="password"
+                      placeholder="••••••••"
+                      disabled={isLoading}
+                      className="pl-12 h-12 bg-white/5 border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:border-violet-500 focus:ring-violet-500/20 transition-colors"
+                      {...field}
+                    />
+                  </div>
+                </FormControl>
+                <FormMessage className="text-red-400" />
+              </FormItem>
+            )}
+          />
 
           {requiresTwoFactor && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              transition={{ duration: 0.3 }}
-            >
+            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
               <FormField
                 control={form.control}
                 name="twoFactorCode"
@@ -166,7 +139,7 @@ export default function LoginPage() {
                           placeholder="123456"
                           maxLength={6}
                           disabled={isLoading}
-                          className="pl-12 h-12 bg-white/5 border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:border-violet-500 focus:ring-violet-500/20 tracking-widest text-center text-lg transition-all"
+                          className="pl-12 h-12 bg-white/5 border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:border-violet-500 focus:ring-violet-500/20 tracking-widest text-center text-lg transition-colors"
                           {...field}
                         />
                       </div>
@@ -175,49 +148,33 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-            </motion.div>
+            </div>
           )}
 
-          <motion.div
-            className="flex items-center justify-end"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
+          <div className="flex items-center justify-end">
             <Link
               href="/forgot-password"
               className="text-sm text-violet-400 hover:text-violet-300 transition-colors"
             >
               Забыли пароль?
             </Link>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="w-full h-12 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white font-semibold rounded-xl shadow-lg shadow-violet-500/25 transition-all duration-200 hover:shadow-violet-500/40 active:scale-[0.98]"
           >
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full h-12 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white font-semibold rounded-xl shadow-lg shadow-violet-500/25 transition-all duration-200 hover:shadow-violet-500/40 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              {isLoading ? (
-                <Icons.spinner className="h-5 w-5 animate-spin" />
-              ) : (
-                "Войти"
-              )}
-            </Button>
-          </motion.div>
+            {isLoading ? (
+              <Icons.spinner className="h-5 w-5 animate-spin" />
+            ) : (
+              "Войти"
+            )}
+          </Button>
         </form>
       </Form>
 
-      <motion.div
-        className="mt-8 text-center"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-      >
+      <div className="mt-8 text-center">
         <p className="text-gray-400">
           Нет аккаунта?{" "}
           <Link
@@ -227,7 +184,7 @@ export default function LoginPage() {
             Зарегистрироваться
           </Link>
         </p>
-      </motion.div>
-    </div>
+      </div>
+    </>
   );
 }
