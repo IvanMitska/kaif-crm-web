@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "pnpm install && cd apps/frontend && pnpm run build && mkdir -p .next/standalone/apps/frontend/.next && cp -r .next/static .next/standalone/apps/frontend/.next/ || true"
+buildCommand = "pnpm install && cd apps/frontend && pnpm run build && mkdir -p .next/standalone/apps/frontend/.next && cp -r .next/static .next/standalone/apps/frontend/.next/ && cp -r public .next/standalone/apps/frontend/public || true"
 
 [deploy]
 startCommand = "cd apps/frontend/.next/standalone && HOSTNAME=0.0.0.0 node apps/frontend/server.js"
