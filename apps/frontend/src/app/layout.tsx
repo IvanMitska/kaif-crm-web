@@ -19,13 +19,13 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://www.sintara-crm.com"),
   icons: {
     icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/logo-icon.png", type: "image/png", sizes: "512x512" },
+      { url: "/logo-icon.png", type: "image/png", sizes: "32x32" },
+      { url: "/logo-icon.png", type: "image/png", sizes: "192x192" },
     ],
     apple: [
       { url: "/logo-icon.png", sizes: "180x180", type: "image/png" },
     ],
-    shortcut: "/favicon.svg",
+    shortcut: "/logo-icon.png",
   },
   manifest: "/manifest.webmanifest",
   appleWebApp: {

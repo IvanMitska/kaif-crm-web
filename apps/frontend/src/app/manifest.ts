@@ -3,7 +3,7 @@ import type { MetadataRoute } from 'next'
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Sintara CRM',
-    short_name: 'Sintara',
+    short_name: 'Sintara CRM',
     description: 'Современная CRM-система для автоматизации бизнеса. Управление сделками, клиентами, онлайн-запись и аналитика.',
     start_url: '/',
     display: 'standalone',
@@ -12,9 +12,9 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: 'portrait-primary',
     icons: [
       {
-        src: '/favicon.svg',
-        sizes: 'any',
-        type: 'image/svg+xml',
+        src: '/logo-icon.png',
+        sizes: '192x192',
+        type: 'image/png',
         purpose: 'any',
       },
       {
@@ -26,6 +26,12 @@ export default function manifest(): MetadataRoute.Manifest {
       {
         src: '/logo-icon.png',
         sizes: '192x192',
+        type: 'image/png',
+        purpose: 'maskable',
+      },
+      {
+        src: '/logo-icon.png',
+        sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',
       },
