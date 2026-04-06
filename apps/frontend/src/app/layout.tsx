@@ -8,8 +8,48 @@ import { Toaster } from "@/components/ui/sonner";
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
 
 export const metadata: Metadata = {
-  title: "Sintara CRM - Система управления взаимоотношениями с клиентами",
-  description: "Современная CRM-система с омниканальной коммуникацией",
+  title: {
+    default: "Sintara CRM - Автоматизация продаж и управление клиентами",
+    template: "%s | Sintara CRM",
+  },
+  description: "Современная CRM-система для автоматизации бизнеса. Управление сделками, клиентами, онлайн-запись, аналитика и омниканальная коммуникация в одном месте.",
+  keywords: ["CRM", "CRM система", "автоматизация продаж", "управление клиентами", "Sintara", "онлайн-запись", "аналитика"],
+  authors: [{ name: "Sintara CRM" }],
+  creator: "Sintara CRM",
+  metadataBase: new URL("https://www.sintara-crm.com"),
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/logo-icon.png", type: "image/png" },
+    ],
+    apple: "/logo-icon.png",
+  },
+  openGraph: {
+    type: "website",
+    locale: "ru_RU",
+    url: "https://www.sintara-crm.com",
+    siteName: "Sintara CRM",
+    title: "Sintara CRM - Автоматизация продаж и управление клиентами",
+    description: "Современная CRM-система для автоматизации бизнеса. Управление сделками, клиентами, онлайн-запись, аналитика и омниканальная коммуникация в одном месте.",
+    images: [
+      {
+        url: "/logo.png",
+        width: 600,
+        height: 150,
+        alt: "Sintara CRM",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sintara CRM - Автоматизация продаж и управление клиентами",
+    description: "Современная CRM-система для автоматизации бизнеса. Управление сделками, клиентами, онлайн-запись и аналитика.",
+    images: ["/logo.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
