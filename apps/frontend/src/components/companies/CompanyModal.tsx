@@ -14,6 +14,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Company {
   id?: string;
@@ -49,6 +50,7 @@ const industries = [
 ];
 
 export function CompanyModal({ isOpen, onClose, onSave, company, isLoading }: CompanyModalProps) {
+  const { symbol } = useCurrency();
   const [formData, setFormData] = useState<Company>({
     name: "",
     inn: "",
@@ -240,7 +242,7 @@ export function CompanyModal({ isOpen, onClose, onSave, company, isLoading }: Co
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Годовая выручка (RUB)
+                  Годовая выручка ({symbol})
                 </label>
                 <div className="relative">
                   <TrendingUp className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />

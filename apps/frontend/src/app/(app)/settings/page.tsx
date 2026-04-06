@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   User,
@@ -22,14 +22,16 @@ import {
   Sun,
   Monitor,
   Languages,
-  Plus,
-  LogOut,
   ExternalLink,
   Crown,
   Zap,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
+import { integrationsApi, organizationsApi, usersApi } from "@/lib/api";
+import { CURRENCY_OPTIONS, CurrencyCode, getCurrencySymbol } from "@/lib/currency";
 
 // Custom icons for integrations
 const WhatsAppIcon = () => (
@@ -50,12 +52,6 @@ const InstagramIcon = () => (
   </svg>
 );
 
-const VKIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-    <path d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.391 0 15.684 0zm3.692 17.123h-1.744c-.66 0-.864-.525-2.05-1.727-1.033-1-1.49-1.135-1.744-1.135-.356 0-.458.102-.458.593v1.575c0 .424-.135.678-1.253.678-1.846 0-3.896-1.12-5.339-3.202-2.17-3.042-2.763-5.32-2.763-5.795 0-.254.102-.491.593-.491h1.744c.44 0 .61.203.78.677.863 2.49 2.303 4.675 2.896 4.675.22 0 .322-.102.322-.66V9.721c-.068-1.186-.695-1.287-.695-1.71 0-.203.17-.407.44-.407h2.744c.373 0 .508.203.508.643v3.473c0 .372.17.508.271.508.22 0 .407-.136.813-.542 1.254-1.406 2.151-3.574 2.151-3.574.119-.254.322-.491.763-.491h1.744c.525 0 .644.27.525.643-.22 1.017-2.354 4.031-2.354 4.031-.186.305-.254.44 0 .78.186.254.796.779 1.203 1.253.745.847 1.32 1.558 1.473 2.05.17.49-.085.744-.576.744z"/>
-  </svg>
-);
-
 const tabs = [
   { id: "profile", name: "Профиль", icon: User },
   { id: "notifications", name: "Уведомления", icon: Bell },
@@ -66,14 +62,19 @@ const tabs = [
   { id: "billing", name: "Тарифы", icon: CreditCard },
 ];
 
-const integrations = [
-  { id: "whatsapp", name: "WhatsApp Business", description: "Связь с клиентами через WhatsApp", icon: WhatsAppIcon, status: "connected", color: "bg-green-500" },
-  { id: "telegram", name: "Telegram Bot", description: "Автоматизация через Telegram", icon: TelegramIcon, status: "connected", color: "bg-blue-500" },
-  { id: "instagram", name: "Instagram Direct", description: "Сообщения из Instagram", icon: InstagramIcon, status: "disconnected", color: "bg-gradient-to-br from-purple-500 to-pink-500" },
-  { id: "vk", name: "ВКонтакте", description: "Сообщения из ВК", icon: VKIcon, status: "disconnected", color: "bg-blue-600" },
-  { id: "email", name: "Email IMAP/SMTP", description: "Почтовые ящики", icon: Mail, status: "connected", color: "bg-red-500" },
-  { id: "phone", name: "IP-телефония", description: "Звонки и записи разговоров", icon: Phone, status: "disconnected", color: "bg-amber-500" },
-];
+// Integration configurations (UI config)
+const integrationConfigs: Record<string, { name: string; description: string; icon: any; color: string }> = {
+  whatsapp: { name: "WhatsApp Business", description: "Связь с клиентами через WhatsApp", icon: WhatsAppIcon, color: "bg-green-500" },
+  telegram: { name: "Telegram Bot", description: "Автоматизация через Telegram", icon: TelegramIcon, color: "bg-blue-500" },
+  instagram: { name: "Instagram Direct", description: "Сообщения из Instagram", icon: InstagramIcon, color: "bg-gradient-to-br from-purple-500 to-pink-500" },
+  email: { name: "Email IMAP/SMTP", description: "Почтовые ящики", icon: Mail, color: "bg-red-500" },
+  phone: { name: "IP-телефония", description: "Звонки и записи разговоров", icon: Phone, color: "bg-amber-500" },
+};
+
+interface IntegrationStatus {
+  id: string;
+  status: "connected" | "disconnected";
+}
 
 
 // Toggle Switch Component
@@ -159,14 +160,210 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile");
   const user = useAuthStore((state) => state.user);
+  const organization = useAuthStore((state) => state.organization);
+  const updateOrganization = useAuthStore((state) => state.updateOrganization);
+  const updateUser = useAuthStore((state) => state.updateUser);
+
+  // Profile form state
+  const [profileForm, setProfileForm] = useState({
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
+    phone: '',
+    position: '',
+    timezone: 'UTC+3',
+  });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  // Company form state
+  const [companyForm, setCompanyForm] = useState({
+    name: organization?.name || 'Sintara CRM',
+    inn: '',
+    address: '',
+    phone: '',
+    email: '',
+  });
+  const [savingCompany, setSavingCompany] = useState(false);
+  const [companySaved, setCompanySaved] = useState(false);
+
+  // Password form state
+  const [passwordForm, setPasswordForm] = useState({
+    current: '',
+    new: '',
+    confirm: '',
+  });
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+  // State for currency
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(
+    (organization?.currency as CurrencyCode) || 'THB'
+  );
+  const [savingCurrency, setSavingCurrency] = useState(false);
+
+  // Initialize forms when user/org data loads
+  useEffect(() => {
+    if (user) {
+      setProfileForm(prev => ({
+        ...prev,
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+      }));
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (organization) {
+      setCompanyForm(prev => ({
+        ...prev,
+        name: organization.name || '',
+      }));
+      setSelectedCurrency((organization.currency as CurrencyCode) || 'THB');
+    }
+  }, [organization]);
+
+  // Save profile handler
+  const handleSaveProfile = async () => {
+    if (!user?.id) return;
+
+    setSavingProfile(true);
+    setProfileError(null);
+    setProfileSaved(false);
+
+    try {
+      await usersApi.update(user.id, {
+        firstName: profileForm.firstName,
+        lastName: profileForm.lastName,
+      });
+      updateUser({
+        firstName: profileForm.firstName,
+        lastName: profileForm.lastName,
+      });
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 3000);
+    } catch (error: any) {
+      console.error('Failed to save profile:', error);
+      setProfileError(error.response?.data?.message || 'Ошибка сохранения профиля');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  // Save company handler
+  const handleSaveCompany = async () => {
+    setSavingCompany(true);
+    setCompanySaved(false);
+
+    try {
+      await organizationsApi.updateCurrent({ name: companyForm.name });
+      updateOrganization({ name: companyForm.name });
+      setCompanySaved(true);
+      setTimeout(() => setCompanySaved(false), 3000);
+    } catch (error) {
+      console.error('Failed to save company:', error);
+    } finally {
+      setSavingCompany(false);
+    }
+  };
+
+  // Save currency handler
+  const handleSaveCurrency = async () => {
+    setSavingCurrency(true);
+    try {
+      await organizationsApi.updateCurrent({ currency: selectedCurrency });
+      updateOrganization({ currency: selectedCurrency });
+    } catch (error) {
+      console.error('Failed to save currency:', error);
+    } finally {
+      setSavingCurrency(false);
+    }
+  };
+
+  // Change password handler
+  const handleChangePassword = async () => {
+    if (passwordForm.new !== passwordForm.confirm) {
+      setPasswordError('Пароли не совпадают');
+      return;
+    }
+    if (passwordForm.new.length < 6) {
+      setPasswordError('Пароль должен быть не менее 6 символов');
+      return;
+    }
+
+    setSavingPassword(true);
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
+    try {
+      await usersApi.changePassword({
+        currentPassword: passwordForm.current,
+        newPassword: passwordForm.new,
+      });
+      setPasswordSuccess(true);
+      setPasswordForm({ current: '', new: '', confirm: '' });
+      setTimeout(() => setPasswordSuccess(false), 3000);
+    } catch (error: any) {
+      console.error('Failed to change password:', error);
+      setPasswordError(error.response?.data?.message || 'Неверный текущий пароль');
+    } finally {
+      setSavingPassword(false);
+    }
+  };
 
   // State for toggles
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
   const [smsNotifications, setSmsNotifications] = useState(false);
-  const [twoFactor, setTwoFactor] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
+  const [notificationTypes, setNotificationTypes] = useState({
+    newDeals: true,
+    newMessages: true,
+    taskChanges: true,
+    reminders: true,
+    system: false,
+    quietMode: false,
+  });
+  const [theme, setTheme] = useState<"light" | "dark" | "system">("dark");
   const [showPassword, setShowPassword] = useState(false);
+
+  // State for integrations
+  const [integrations, setIntegrations] = useState<IntegrationStatus[]>([]);
+  const [integrationsLoading, setIntegrationsLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === "integrations") {
+      fetchIntegrations();
+    }
+  }, [activeTab]);
+
+  const fetchIntegrations = async () => {
+    try {
+      setIntegrationsLoading(true);
+      const response = await integrationsApi.getStatus();
+      const data = response.data;
+
+      // Map API response to integration statuses
+      const statuses: IntegrationStatus[] = Object.keys(integrationConfigs).map(id => ({
+        id,
+        status: data[id]?.connected ? "connected" : "disconnected"
+      }));
+
+      setIntegrations(statuses);
+    } catch (err) {
+      console.error("Failed to fetch integrations:", err);
+      // Fallback to all disconnected
+      const statuses: IntegrationStatus[] = Object.keys(integrationConfigs).map(id => ({
+        id,
+        status: "disconnected"
+      }));
+      setIntegrations(statuses);
+    } finally {
+      setIntegrationsLoading(false);
+    }
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -180,14 +377,20 @@ export default function SettingsPage() {
                   <div className="w-24 h-24 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
                     {user?.firstName?.[0]}{user?.lastName?.[0]}
                   </div>
-                  <button className="absolute bottom-0 right-0 w-8 h-8 bg-violet-500 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-purple-500">
+                  <button
+                    className="absolute bottom-0 right-0 w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white/50 shadow-lg cursor-not-allowed"
+                    title="Загрузка аватара скоро будет доступна"
+                    disabled
+                  >
                     <Camera className="w-4 h-4" />
                   </button>
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-white">{user?.firstName} {user?.lastName}</h3>
                   <p className="text-sm text-gray-400">{user?.email}</p>
-                  <p className="text-xs text-gray-400 mt-1">Менеджер по продажам</p>
+                  <span className="inline-block mt-1 px-2 py-0.5 bg-violet-500/20 text-violet-400 text-xs font-medium rounded">
+                    {user?.role === 'ADMIN' ? 'Администратор' : user?.role === 'MANAGER' ? 'Менеджер' : 'Пользователь'}
+                  </span>
                 </div>
               </div>
             </Section>
@@ -200,7 +403,8 @@ export default function SettingsPage() {
                     <label className="block text-xs font-medium text-gray-400 mb-1.5">Имя</label>
                     <input
                       type="text"
-                      defaultValue={user?.firstName}
+                      value={profileForm.firstName}
+                      onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })}
                       className="w-full px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10"
                     />
                   </div>
@@ -208,7 +412,8 @@ export default function SettingsPage() {
                     <label className="block text-xs font-medium text-gray-400 mb-1.5">Фамилия</label>
                     <input
                       type="text"
-                      defaultValue={user?.lastName}
+                      value={profileForm.lastName}
+                      onChange={(e) => setProfileForm({ ...profileForm, lastName: e.target.value })}
                       className="w-full px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10"
                     />
                   </div>
@@ -217,14 +422,18 @@ export default function SettingsPage() {
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">Email</label>
                   <input
                     type="email"
-                    defaultValue={user?.email}
-                    className="w-full px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10"
+                    value={profileForm.email}
+                    disabled
+                    className="w-full px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white/50 border-0 cursor-not-allowed"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Email нельзя изменить</p>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">Телефон</label>
                   <input
                     type="tel"
+                    value={profileForm.phone}
+                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                     placeholder="+7 (999) 123-45-67"
                     className="w-full px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10 placeholder:text-gray-500"
                   />
@@ -234,25 +443,51 @@ export default function SettingsPage() {
                     <label className="block text-xs font-medium text-gray-400 mb-1.5">Должность</label>
                     <input
                       type="text"
+                      value={profileForm.position}
+                      onChange={(e) => setProfileForm({ ...profileForm, position: e.target.value })}
                       placeholder="Менеджер по продажам"
                       className="w-full px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10 placeholder:text-gray-500"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-400 mb-1.5">Часовой пояс</label>
-                    <select className="w-full px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10 appearance-none cursor-pointer">
-                      <option>UTC+3 (Москва)</option>
-                      <option>UTC+5 (Екатеринбург)</option>
-                      <option>UTC+7 (Новосибирск)</option>
+                    <select
+                      value={profileForm.timezone}
+                      onChange={(e) => setProfileForm({ ...profileForm, timezone: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10 appearance-none cursor-pointer"
+                    >
+                      <option value="UTC+3" className="bg-gray-800">UTC+3 (Москва)</option>
+                      <option value="UTC+5" className="bg-gray-800">UTC+5 (Екатеринбург)</option>
+                      <option value="UTC+7" className="bg-gray-800">UTC+7 (Новосибирск/Бангкок)</option>
                     </select>
                   </div>
                 </div>
               </div>
             </Section>
 
+            {/* Error/Success Messages */}
+            {profileError && (
+              <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+                <AlertCircle className="w-4 h-4" />
+                {profileError}
+              </div>
+            )}
+
+            {profileSaved && (
+              <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-400 text-sm">
+                <Check className="w-4 h-4" />
+                Профиль успешно сохранён
+              </div>
+            )}
+
             {/* Save Button */}
-            <button className="w-full py-3 bg-violet-500 hover:bg-purple-500 text-white font-semibold rounded-xl">
-              Сохранить изменения
+            <button
+              onClick={handleSaveProfile}
+              disabled={savingProfile}
+              className="w-full py-3 bg-violet-500 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2"
+            >
+              {savingProfile && <Loader2 className="w-4 h-4 animate-spin" />}
+              {savingProfile ? 'Сохранение...' : 'Сохранить изменения'}
             </button>
           </div>
         );
@@ -282,20 +517,69 @@ export default function SettingsPage() {
             </Section>
 
             <Section title="Типы уведомлений">
-              <SettingsRow title="Новые сделки" action={<Toggle checked={true} onChange={() => {}} />} />
-              <SettingsRow title="Новые сообщения" action={<Toggle checked={true} onChange={() => {}} />} />
-              <SettingsRow title="Изменения в задачах" action={<Toggle checked={true} onChange={() => {}} />} />
-              <SettingsRow title="Напоминания" action={<Toggle checked={true} onChange={() => {}} />} />
-              <SettingsRow title="Системные уведомления" action={<Toggle checked={false} onChange={() => {}} />} />
+              <SettingsRow
+                title="Новые сделки"
+                action={
+                  <Toggle
+                    checked={notificationTypes.newDeals}
+                    onChange={(val) => setNotificationTypes({ ...notificationTypes, newDeals: val })}
+                  />
+                }
+              />
+              <SettingsRow
+                title="Новые сообщения"
+                action={
+                  <Toggle
+                    checked={notificationTypes.newMessages}
+                    onChange={(val) => setNotificationTypes({ ...notificationTypes, newMessages: val })}
+                  />
+                }
+              />
+              <SettingsRow
+                title="Изменения в задачах"
+                action={
+                  <Toggle
+                    checked={notificationTypes.taskChanges}
+                    onChange={(val) => setNotificationTypes({ ...notificationTypes, taskChanges: val })}
+                  />
+                }
+              />
+              <SettingsRow
+                title="Напоминания"
+                action={
+                  <Toggle
+                    checked={notificationTypes.reminders}
+                    onChange={(val) => setNotificationTypes({ ...notificationTypes, reminders: val })}
+                  />
+                }
+              />
+              <SettingsRow
+                title="Системные уведомления"
+                action={
+                  <Toggle
+                    checked={notificationTypes.system}
+                    onChange={(val) => setNotificationTypes({ ...notificationTypes, system: val })}
+                  />
+                }
+              />
             </Section>
 
             <Section title="Расписание">
               <SettingsRow
                 title="Тихий режим"
                 description="Не беспокоить с 22:00 до 08:00"
-                action={<Toggle checked={false} onChange={() => {}} />}
+                action={
+                  <Toggle
+                    checked={notificationTypes.quietMode}
+                    onChange={(val) => setNotificationTypes({ ...notificationTypes, quietMode: val })}
+                  />
+                }
               />
             </Section>
+
+            <p className="text-xs text-gray-500 text-center">
+              Настройки уведомлений сохраняются автоматически
+            </p>
           </div>
         );
 
@@ -309,10 +593,13 @@ export default function SettingsPage() {
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
+                      value={passwordForm.current}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
                       placeholder="••••••••"
                       className="w-full px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10 pr-12 placeholder:text-gray-500"
                     />
                     <button
+                      type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
                     >
@@ -324,6 +611,8 @@ export default function SettingsPage() {
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">Новый пароль</label>
                   <input
                     type="password"
+                    value={passwordForm.new}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, new: e.target.value })}
                     placeholder="••••••••"
                     className="w-full px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10 placeholder:text-gray-500"
                   />
@@ -332,60 +621,69 @@ export default function SettingsPage() {
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">Подтверждение пароля</label>
                   <input
                     type="password"
+                    value={passwordForm.confirm}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
                     placeholder="••••••••"
                     className="w-full px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10 placeholder:text-gray-500"
                   />
                 </div>
-                <button className="w-full py-2.5 bg-violet-500 hover:bg-purple-500 text-white font-medium rounded-xl text-sm">
-                  Изменить пароль
+
+                {passwordError && (
+                  <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+                    <AlertCircle className="w-4 h-4" />
+                    {passwordError}
+                  </div>
+                )}
+
+                {passwordSuccess && (
+                  <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-400 text-sm">
+                    <Check className="w-4 h-4" />
+                    Пароль успешно изменён
+                  </div>
+                )}
+
+                <button
+                  onClick={handleChangePassword}
+                  disabled={savingPassword || !passwordForm.current || !passwordForm.new || !passwordForm.confirm}
+                  className="w-full py-2.5 bg-violet-500 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-xl text-sm flex items-center justify-center gap-2"
+                >
+                  {savingPassword && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {savingPassword ? 'Изменение...' : 'Изменить пароль'}
                 </button>
               </div>
             </Section>
 
             <Section title="Двухфакторная аутентификация">
-              <SettingsRow
-                icon={Shield}
-                title="2FA через приложение"
-                description="Google Authenticator или аналоги"
-                action={<Toggle checked={twoFactor} onChange={setTwoFactor} />}
-              />
-              <SettingsRow
-                icon={Smartphone}
-                title="2FA через SMS"
-                description="Код подтверждения на телефон"
-                action={<Toggle checked={false} onChange={() => {}} />}
-              />
-            </Section>
-
-            <Section title="Активные сессии">
-              <div className="p-4 space-y-3">
-                <div className="flex items-center gap-3 p-3 bg-green-500/10 rounded-xl">
-                  <Monitor className="w-5 h-5 text-green-400" />
+              <div className="p-4">
+                <div className="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/10">
+                  <Shield className="w-8 h-8 text-gray-500" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-white">MacBook Pro — Chrome</p>
-                    <p className="text-xs text-gray-400">Москва, Россия • Текущая сессия</p>
+                    <p className="text-sm font-medium text-gray-300">Двухфакторная аутентификация</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Функция находится в разработке и скоро будет доступна
+                    </p>
                   </div>
-                  <span className="w-2 h-2 bg-green-500 rounded-full" />
-                </div>
-                <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
-                  <Smartphone className="w-5 h-5 text-gray-400" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-white">iPhone 14 Pro — Safari</p>
-                    <p className="text-xs text-gray-400">Москва, Россия • 2 часа назад</p>
-                  </div>
-                  <button className="text-xs text-red-400 font-medium">Завершить</button>
+                  <span className="px-2 py-1 bg-violet-500/20 text-violet-400 text-xs font-medium rounded-lg">
+                    Скоро
+                  </span>
                 </div>
               </div>
             </Section>
 
-            <Section>
-              <SettingsRow
-                icon={LogOut}
-                title="Выйти со всех устройств"
-                description="Кроме текущего"
-                onClick={() => {}}
-                danger
-              />
+            <Section title="Текущая сессия">
+              <div className="p-4">
+                <div className="flex items-center gap-3 p-3 bg-green-500/10 rounded-xl">
+                  <Monitor className="w-5 h-5 text-green-400" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-white">Текущий браузер</p>
+                    <p className="text-xs text-gray-400">Вы вошли в систему</p>
+                  </div>
+                  <span className="w-2 h-2 bg-green-500 rounded-full" />
+                </div>
+                <p className="text-xs text-gray-500 mt-3 text-center">
+                  Управление сессиями будет доступно в следующих версиях
+                </p>
+              </div>
             </Section>
           </div>
         );
@@ -397,18 +695,20 @@ export default function SettingsPage() {
               <div className="p-4">
                 <div className="grid grid-cols-3 gap-3">
                   {[
-                    { id: "light", icon: Sun, name: "Светлая" },
-                    { id: "dark", icon: Moon, name: "Тёмная" },
-                    { id: "system", icon: Monitor, name: "Системная" },
+                    { id: "light", icon: Sun, name: "Светлая", disabled: true },
+                    { id: "dark", icon: Moon, name: "Тёмная", disabled: false },
+                    { id: "system", icon: Monitor, name: "Системная", disabled: true },
                   ].map((t) => (
                     <button
                       key={t.id}
-                      onClick={() => setTheme(t.id as any)}
+                      onClick={() => !t.disabled && setTheme(t.id as any)}
+                      disabled={t.disabled}
                       className={cn(
-                        "flex flex-col items-center gap-2 p-4 rounded-xl border-2",
+                        "flex flex-col items-center gap-2 p-4 rounded-xl border-2 relative",
                         theme === t.id
                           ? "border-violet-500 bg-violet-500/10"
-                          : "border-white/10 hover:border-white/20"
+                          : "border-white/10",
+                        t.disabled ? "opacity-50 cursor-not-allowed" : "hover:border-white/20"
                       )}
                     >
                       <t.icon className={cn("w-6 h-6", theme === t.id ? "text-violet-400" : "text-gray-400")} />
@@ -416,38 +716,53 @@ export default function SettingsPage() {
                         {t.name}
                       </span>
                       {theme === t.id && <Check className="w-4 h-4 text-violet-400" />}
+                      {t.disabled && (
+                        <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-violet-500/20 text-violet-400 text-[10px] font-medium rounded">
+                          Скоро
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
+                <p className="text-xs text-gray-500 mt-3 text-center">
+                  Сейчас доступна только тёмная тема. Светлая тема в разработке.
+                </p>
               </div>
             </Section>
 
-            <Section title="Язык">
-              <SettingsRow
-                icon={Languages}
-                title="Язык интерфейса"
-                description="Русский"
-                onClick={() => {}}
-              />
-              <SettingsRow
-                icon={Globe}
-                title="Региональные настройки"
-                description="Россия"
-                onClick={() => {}}
-              />
+            <Section title="Язык и регион">
+              <div className="p-4 space-y-3">
+                <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
+                  <Languages className="w-5 h-5 text-gray-400" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-white">Язык интерфейса</p>
+                    <p className="text-xs text-gray-400">Русский</p>
+                  </div>
+                  <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs font-medium rounded-lg">
+                    Активен
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 text-center">
+                  Дополнительные языки будут добавлены в будущих версиях
+                </p>
+              </div>
             </Section>
 
             <Section title="Отображение">
-              <SettingsRow
-                title="Компактный режим"
-                description="Уменьшенные отступы и шрифты"
-                action={<Toggle checked={false} onChange={() => {}} />}
-              />
-              <SettingsRow
-                title="Анимации"
-                description="Плавные переходы в интерфейсе"
-                action={<Toggle checked={true} onChange={() => {}} />}
-              />
+              <div className="p-4">
+                <div className="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/10">
+                  <Palette className="w-8 h-8 text-gray-500" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-300">Настройки отображения</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Компактный режим, анимации и другие настройки
+                    </p>
+                  </div>
+                  <span className="px-2 py-1 bg-violet-500/20 text-violet-400 text-xs font-medium rounded-lg">
+                    Скоро
+                  </span>
+                </div>
+              </div>
             </Section>
           </div>
         );
@@ -456,41 +771,50 @@ export default function SettingsPage() {
         return (
           <div className="space-y-6">
             <Section title="Подключенные интеграции">
-              <div className="p-4 grid grid-cols-2 gap-4">
-                {integrations.map((integration) => {
-                  const Icon = integration.icon;
-                  const isConnected = integration.status === "connected";
+              {integrationsLoading ? (
+                <div className="p-8 flex justify-center">
+                  <Loader2 className="w-6 h-6 text-violet-500 animate-spin" />
+                </div>
+              ) : (
+                <div className="p-4 grid grid-cols-2 gap-4">
+                  {integrations.map((integration) => {
+                    const config = integrationConfigs[integration.id];
+                    if (!config) return null;
 
-                  return (
-                    <div
-                      key={integration.id}
-                      className={cn(
-                        "p-4 rounded-xl border-2",
-                        isConnected ? "border-green-500/30 bg-green-500/5" : "border-white/10"
-                      )}
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-white", integration.color)}>
-                          {typeof Icon === 'function' && Icon.length === 0 ? <Icon /> : <Icon className="w-6 h-6" />}
-                        </div>
-                        {isConnected && <Check className="w-5 h-5 text-green-400" />}
-                      </div>
-                      <h4 className="font-semibold text-sm text-white">{integration.name}</h4>
-                      <p className="text-xs text-gray-400 mt-1 mb-3">{integration.description}</p>
-                      <button
+                    const Icon = config.icon;
+                    const isConnected = integration.status === "connected";
+
+                    return (
+                      <div
+                        key={integration.id}
                         className={cn(
-                          "w-full py-2 rounded-lg text-sm font-medium",
-                          isConnected
-                            ? "bg-white/10 text-gray-300 hover:bg-white/15"
-                            : "bg-violet-500 text-white hover:bg-purple-500"
+                          "p-4 rounded-xl border-2",
+                          isConnected ? "border-green-500/30 bg-green-500/5" : "border-white/10"
                         )}
                       >
-                        {isConnected ? "Настроить" : "Подключить"}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+                        <div className="flex items-start justify-between mb-3">
+                          <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-white", config.color)}>
+                            {typeof Icon === 'function' && Icon.length === 0 ? <Icon /> : <Icon className="w-6 h-6" />}
+                          </div>
+                          {isConnected && <Check className="w-5 h-5 text-green-400" />}
+                        </div>
+                        <h4 className="font-semibold text-sm text-white">{config.name}</h4>
+                        <p className="text-xs text-gray-400 mt-1 mb-3">{config.description}</p>
+                        <button
+                          className={cn(
+                            "w-full py-2 rounded-lg text-sm font-medium",
+                            isConnected
+                              ? "bg-white/10 text-gray-300 hover:bg-white/15"
+                              : "bg-violet-500 text-white hover:bg-purple-500"
+                          )}
+                        >
+                          {isConnected ? "Настроить" : "Подключить"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </Section>
 
             <Section>
@@ -517,9 +841,11 @@ export default function SettingsPage() {
                   className="rounded-2xl"
                 />
                 <div>
-                  <h3 className="text-lg font-semibold text-white">Sintara CRM</h3>
-                  <p className="text-sm text-gray-400">sintara-crm.com</p>
-                  <button className="text-sm text-violet-400 font-medium mt-1">Изменить логотип</button>
+                  <h3 className="text-lg font-semibold text-white">{companyForm.name || 'Sintara CRM'}</h3>
+                  <p className="text-sm text-gray-400">{organization?.slug}.sintara-crm.com</p>
+                  <button className="text-sm text-violet-400 font-medium mt-1 opacity-50 cursor-not-allowed">
+                    Изменить логотип (скоро)
+                  </button>
                 </div>
               </div>
             </Section>
@@ -530,7 +856,8 @@ export default function SettingsPage() {
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">Название компании</label>
                   <input
                     type="text"
-                    defaultValue="Sintara CRM"
+                    value={companyForm.name}
+                    onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })}
                     className="w-full px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10"
                   />
                 </div>
@@ -538,6 +865,8 @@ export default function SettingsPage() {
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">ИНН</label>
                   <input
                     type="text"
+                    value={companyForm.inn}
+                    onChange={(e) => setCompanyForm({ ...companyForm, inn: e.target.value })}
                     placeholder="1234567890"
                     className="w-full px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10 placeholder:text-gray-500"
                   />
@@ -546,6 +875,8 @@ export default function SettingsPage() {
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">Юридический адрес</label>
                   <input
                     type="text"
+                    value={companyForm.address}
+                    onChange={(e) => setCompanyForm({ ...companyForm, address: e.target.value })}
                     placeholder="г. Москва, ул. Примерная, д. 1"
                     className="w-full px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10 placeholder:text-gray-500"
                   />
@@ -555,6 +886,8 @@ export default function SettingsPage() {
                     <label className="block text-xs font-medium text-gray-400 mb-1.5">Телефон</label>
                     <input
                       type="tel"
+                      value={companyForm.phone}
+                      onChange={(e) => setCompanyForm({ ...companyForm, phone: e.target.value })}
                       placeholder="+7 (495) 123-45-67"
                       className="w-full px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10 placeholder:text-gray-500"
                     />
@@ -563,6 +896,8 @@ export default function SettingsPage() {
                     <label className="block text-xs font-medium text-gray-400 mb-1.5">Email</label>
                     <input
                       type="email"
+                      value={companyForm.email}
+                      onChange={(e) => setCompanyForm({ ...companyForm, email: e.target.value })}
                       placeholder="info@company.ru"
                       className="w-full px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10 placeholder:text-gray-500"
                     />
@@ -571,87 +906,120 @@ export default function SettingsPage() {
               </div>
             </Section>
 
-            <button className="w-full py-3 bg-violet-500 hover:bg-purple-500 text-white font-semibold rounded-xl">
-              Сохранить изменения
+            <Section title="Валюта">
+              <div className="p-4 space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Валюта для отображения сумм</label>
+                  <select
+                    value={selectedCurrency}
+                    onChange={(e) => setSelectedCurrency(e.target.value as CurrencyCode)}
+                    className="w-full px-4 py-2.5 bg-white/5 rounded-xl text-sm text-white border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10 appearance-none cursor-pointer"
+                  >
+                    {CURRENCY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value} className="bg-gray-800 text-white">
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1.5">
+                    Выбранная валюта будет использоваться для отображения всех сумм в CRM
+                  </p>
+                </div>
+                <button
+                  onClick={handleSaveCurrency}
+                  disabled={savingCurrency || selectedCurrency === organization?.currency}
+                  className="w-full py-2.5 bg-violet-500 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2"
+                >
+                  {savingCurrency && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {savingCurrency ? 'Сохранение...' : 'Сохранить валюту'}
+                </button>
+              </div>
+            </Section>
+
+            {companySaved && (
+              <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-400 text-sm">
+                <Check className="w-4 h-4" />
+                Данные компании успешно сохранены
+              </div>
+            )}
+
+            <button
+              onClick={handleSaveCompany}
+              disabled={savingCompany}
+              className="w-full py-3 bg-violet-500 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2"
+            >
+              {savingCompany && <Loader2 className="w-4 h-4 animate-spin" />}
+              {savingCompany ? 'Сохранение...' : 'Сохранить изменения'}
             </button>
           </div>
         );
 
       case "billing":
+        const currencySymbol = getCurrencySymbol((organization?.currency as CurrencyCode) || 'THB');
         return (
           <div className="space-y-6">
             {/* Current Plan */}
-            <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-6 text-white">
+            <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white">
               <div className="flex items-center gap-2 mb-2">
-                <Crown className="w-5 h-5" />
+                <Zap className="w-5 h-5" />
                 <span className="text-sm font-medium opacity-90">Текущий тариф</span>
               </div>
-              <h3 className="text-2xl font-bold mb-1">Профессиональный</h3>
-              <p className="text-sm opacity-80 mb-4">10 пользователей • Все интеграции • Приоритетная поддержка</p>
+              <h3 className="text-2xl font-bold mb-1">Бесплатный</h3>
+              <p className="text-sm opacity-80 mb-4">Все функции доступны • Без ограничений</p>
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold">₽2,990</span>
+                <span className="text-3xl font-bold">{currencySymbol}0</span>
                 <span className="text-sm opacity-80">/ месяц</span>
               </div>
-              <p className="text-xs opacity-70 mt-2">Следующее списание: 15 марта 2026</p>
             </div>
 
-            <Section title="Доступные тарифы">
+            <Section title="О тарифах">
+              <div className="p-6 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-violet-500/20 flex items-center justify-center mx-auto mb-4">
+                  <Crown className="w-8 h-8 text-violet-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">Платные тарифы скоро</h3>
+                <p className="text-sm text-gray-400 max-w-md mx-auto">
+                  В данный момент все функции Sintara CRM доступны бесплатно.
+                  Платные тарифы с расширенными возможностями будут добавлены позже.
+                </p>
+              </div>
+            </Section>
+
+            <Section title="Что входит в бесплатный план">
               <div className="p-4 space-y-3">
                 {[
-                  { name: "Стартовый", price: "₽990", users: "3 пользователя", current: false },
-                  { name: "Профессиональный", price: "₽2,990", users: "10 пользователей", current: true },
-                  { name: "Корпоративный", price: "₽9,990", users: "Безлимит", current: false },
-                ].map((plan) => (
-                  <div
-                    key={plan.name}
-                    className={cn(
-                      "flex items-center gap-4 p-4 rounded-xl border-2",
-                      plan.current ? "border-violet-500 bg-violet-500/10" : "border-white/10"
-                    )}
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-white">{plan.name}</p>
-                        {plan.current && (
-                          <span className="px-2 py-0.5 bg-violet-500 text-white text-xs font-medium rounded-full">
-                            Текущий
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-400">{plan.users}</p>
+                  "Неограниченное количество сделок",
+                  "Неограниченное количество контактов",
+                  "Все интеграции",
+                  "Онлайн-запись",
+                  "Аналитика и отчёты",
+                  "Telegram бот",
+                ].map((feature) => (
+                  <div key={feature} className="flex items-center gap-3">
+                    <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
+                      <Check className="w-3 h-3 text-green-400" />
                     </div>
-                    <p className="font-bold text-white">{plan.price}<span className="text-sm font-normal text-gray-400">/мес</span></p>
-                    {!plan.current && (
-                      <button className="px-4 py-2 bg-white/10 hover:bg-white/15 text-gray-300 text-sm font-medium rounded-lg">
-                        Выбрать
-                      </button>
-                    )}
+                    <span className="text-sm text-gray-300">{feature}</span>
                   </div>
                 ))}
               </div>
             </Section>
 
-            <Section title="Способ оплаты">
-              <SettingsRow
-                icon={CreditCard}
-                title="Visa •••• 4242"
-                description="Истекает 12/27"
-                onClick={() => {}}
-              />
-              <SettingsRow
-                icon={Plus}
-                title="Добавить карту"
-                onClick={() => {}}
-              />
-            </Section>
-
             <Section>
-              <SettingsRow
-                icon={Zap}
-                title="История платежей"
-                description="Посмотреть все транзакции"
-                onClick={() => {}}
-              />
+              <div className="p-4">
+                <div className="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/10">
+                  <CreditCard className="w-8 h-8 text-gray-500" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-300">Способы оплаты</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Будут доступны при запуске платных тарифов
+                    </p>
+                  </div>
+                  <span className="px-2 py-1 bg-violet-500/20 text-violet-400 text-xs font-medium rounded-lg">
+                    Скоро
+                  </span>
+                </div>
+              </div>
             </Section>
           </div>
         );

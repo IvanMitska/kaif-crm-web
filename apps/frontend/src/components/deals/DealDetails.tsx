@@ -29,6 +29,7 @@ import {
   Paperclip,
   FileText,
 } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface DealDetailsProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ interface DealDetailsProps {
 }
 
 export function DealDetails({ isOpen, onClose, deal, onEdit }: DealDetailsProps) {
+  const { format } = useCurrency();
   const [activeTab, setActiveTab] = useState("overview");
   const [comment, setComment] = useState("");
 
@@ -88,7 +90,7 @@ export function DealDetails({ isOpen, onClose, deal, onEdit }: DealDetailsProps)
                   <div>
                     <p className="text-sm text-gray-400">Сумма сделки</p>
                     <p className="text-2xl font-bold text-white">
-                      {deal.amount.toLocaleString()} ₽
+                      {format(deal.amount)}
                     </p>
                   </div>
                   <DollarSign className="h-8 w-8 text-green-500" />

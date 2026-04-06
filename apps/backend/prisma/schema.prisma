@@ -85,26 +85,66 @@ enum InvitationStatus {
   CANCELLED
 }
 
+enum ResourceType {
+  SPECIALIST
+  ROOM
+  EQUIPMENT
+  VEHICLE
+  OTHER
+}
+
+enum ResourceCategory {
+  MEDICAL
+  EQUIPMENT_RENTAL
+  SERVICES
+  CARS
+  ROOMS
+  OTHER
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum WaitingListStatus {
+  WAITING
+  CONTACTED
+  BOOKED
+  CANCELLED
+}
+
 model Organization {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
+  currency  String   @default("THB") // THB, RUB, USD, EUR
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members     OrgMember[]
-  contacts    Contact[]
-  companies   Company[]
-  leads       Lead[]
-  deals       Deal[]
-  pipelines   Pipeline[]
-  products    Product[]
-  tasks       Task[]
-  activities  Activity[]
-  messages    Message[]
-  tags        Tag[]
-  automations Automation[]
-  invitations Invitation[]
+  members      OrgMember[]
+  contacts     Contact[]
+  companies    Company[]
+  leads        Lead[]
+  deals        Deal[]
+  pipelines    Pipeline[]
+  products     Product[]
+  tasks        Task[]
+  activities   Activity[]
+  messages     Message[]
+  tags         Tag[]
+  automations  Automation[]
+  invitations  Invitation[]
+  resources    Resource[]
+  services     Service[]
+  bookings     Booking[]
+  waitingList  WaitingListItem[]
+  integrations IntegrationConfig[]
+  webhooks     Webhook[]
 
   @@index([slug])
 }
@@ -160,6 +200,8 @@ model User {
   activities          Activity[]
   notifications       Notification[]
   messages            Message[]
+  createdBookings     Booking[]      @relation("BookingCreator")
+  createdWebhooks     Webhook[]
 
   @@index([email])
   @@index([role])
@@ -261,10 +303,15 @@ model Contact {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  deals      Deal[]
-  tasks      Task[]
-  activities Activity[]
-  messages   Message[]
+  deals         Deal[]
+  tasks         Task[]
+  activities    Activity[]
+  messages      Message[]
+  bookings      Booking[]
+  waitingList   WaitingListItem[]
+  telegramChats TelegramChat[]
+  whatsappChats WhatsAppChat[]
+  emailMessages EmailMessage[]
 
   @@index([email])
   @@index([phone])
@@ -606,4 +653,478 @@ model Automation {
   @@index([isActive])
   @@index([name])
   @@index([organizationId])
+}
+
+// ============ Booking Module ============
+
+model Resource {
+  id          String           @id @default(cuid())
+  name        String
+  type        ResourceType     @default(SPECIALIST)
+  category    ResourceCategory @default(SERVICES)
+  color       String           @default("#3B82F6")
+  avatar      String?
+  description String?
+  workingHours Json?           // e.g., {"mon": {"start": "09:00", "end": "18:00"}, ...}
+  breakTime   Json?            // e.g., {"start": "13:00", "end": "14:00"}
+  slotDuration Int             @default(60) // in minutes
+  isActive    Boolean          @default(true)
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  services    ResourceService[]
+  bookings    Booking[]
+  waitingList WaitingListItem[]
+
+  @@index([type])
+  @@index([category])
+  @@index([isActive])
+  @@index([organizationId])
+}
+
+model Service {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  duration    Int     @default(60) // in minutes
+  price       Decimal @db.Decimal(15, 2)
+  currency    String  @default("RUB")
+  color       String  @default("#8B5CF6")
+  isActive    Boolean @default(true)
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  resources   ResourceService[]
+  bookings    Booking[]
+  waitingList WaitingListItem[]
+
+  @@index([name])
+  @@index([isActive])
+  @@index([organizationId])
+}
+
+model ResourceService {
+  id         String @id @default(cuid())
+  resourceId String
+  serviceId  String
+
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  service  Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([resourceId, serviceId])
+  @@index([resourceId])
+  @@index([serviceId])
+}
+
+model Booking {
+  id          String        @id @default(cuid())
+  title       String?
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  status      BookingStatus @default(PENDING)
+  color       String?
+  notes       String?
+  metadata    Json?
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  resourceId String
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  serviceId String?
+  service   Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy   User?   @relation("BookingCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  confirmedAt       DateTime?
+  cancelledAt       DateTime?
+  cancellationReason String?
+  completedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([startTime])
+  @@index([endTime])
+  @@index([resourceId])
+  @@index([serviceId])
+  @@index([contactId])
+  @@index([organizationId])
+}
+
+model WaitingListItem {
+  id String @id @default(cuid())
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  resourceId String?
+  resource   Resource? @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+
+  serviceId String?
+  service   Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  preferredDateFrom DateTime?
+  preferredDateTo   DateTime?
+  preferredTimeFrom String?   // e.g., "09:00"
+  preferredTimeTo   String?   // e.g., "18:00"
+  notes             String?
+  status            WaitingListStatus @default(WAITING)
+
+  contactedAt DateTime?
+  bookedAt    DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([status])
+  @@index([contactId])
+  @@index([resourceId])
+  @@index([organizationId])
+}
+
+// ============ Integrations ============
+
+enum IntegrationType {
+  TELEGRAM
+  WHATSAPP
+  INSTAGRAM
+  VK
+  EMAIL
+}
+
+model IntegrationConfig {
+  id String @id @default(cuid())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  type      IntegrationType
+  name      String           // Display name (e.g., "Основной бот")
+  isActive  Boolean          @default(true)
+
+  // Encrypted credentials stored as JSON
+  // For Telegram: { botToken: "...", webhookSecret: "..." }
+  // For WhatsApp: { apiKey: "...", phoneNumberId: "..." }
+  credentials Json?
+
+  // Additional settings
+  settings Json? // { welcomeMessage: "...", autoReply: true, ... }
+
+  // Webhook URL (auto-generated)
+  webhookUrl    String?
+  webhookSecret String?
+
+  // Stats
+  messagesReceived Int @default(0)
+  messagesSent     Int @default(0)
+  lastActivityAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  telegramChats TelegramChat[]
+  whatsappChats WhatsAppChat[]
+  emailAccounts EmailAccount[]
+
+  @@unique([organizationId, type, name])
+  @@index([organizationId])
+  @@index([type])
+  @@index([isActive])
+}
+
+model TelegramChat {
+  id String @id @default(cuid())
+
+  integrationId String
+  integration   IntegrationConfig @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  // Telegram data
+  telegramChatId   String // Telegram chat ID (can be user ID or group ID)
+  telegramUsername String?
+  telegramFirstName String?
+  telegramLastName  String?
+  chatType         String  @default("private") // private, group, supergroup, channel
+
+  // Link to CRM contact (optional - can be auto-created or manually linked)
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  // Last message info for display
+  lastMessageAt DateTime?
+
+  isBlocked Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([integrationId, telegramChatId])
+  @@index([contactId])
+  @@index([telegramChatId])
+}
+
+model WhatsAppChat {
+  id String @id @default(cuid())
+
+  integrationId String
+  integration   IntegrationConfig @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  // WhatsApp data
+  waId          String  // WhatsApp ID (phone number without +)
+  phoneNumber   String  // Full phone number with country code
+  displayName   String? // Profile name from WhatsApp
+  profilePicUrl String? // Profile picture URL
+
+  // Link to CRM contact (optional - can be auto-created or manually linked)
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  // Conversation window tracking (WhatsApp 24h window)
+  lastInboundAt  DateTime? // Last message from user (resets 24h window)
+  windowExpiresAt DateTime? // When the 24h window expires
+
+  // Last message info for display
+  lastMessageAt DateTime?
+
+  isBlocked Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([integrationId, waId])
+  @@index([contactId])
+  @@index([waId])
+  @@index([phoneNumber])
+}
+
+// Email IMAP Integration
+model EmailAccount {
+  id String @id @default(cuid())
+
+  integrationId String
+  integration   IntegrationConfig @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  // Account info
+  email       String // Email address
+  displayName String? // Display name for the account
+
+  // IMAP settings (encrypted in credentials JSON in IntegrationConfig)
+  // Settings stored here are non-sensitive
+  imapHost    String
+  imapPort    Int     @default(993)
+  imapSecure  Boolean @default(true)
+
+  // SMTP settings for sending
+  smtpHost    String?
+  smtpPort    Int?    @default(587)
+  smtpSecure  Boolean @default(false)
+
+  // Sync settings
+  syncEnabled   Boolean   @default(true)
+  lastSyncAt    DateTime?
+  lastSyncError String?
+  syncFolder    String    @default("INBOX") // IMAP folder to sync
+
+  // Stats
+  emailsReceived Int @default(0)
+  emailsSent     Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  emailMessages EmailMessage[]
+
+  @@unique([integrationId, email])
+  @@index([email])
+}
+
+model EmailMessage {
+  id String @id @default(cuid())
+
+  emailAccountId String
+  emailAccount   EmailAccount @relation(fields: [emailAccountId], references: [id], onDelete: Cascade)
+
+  // Email identifiers
+  messageId   String  // IMAP Message-ID header
+  uid         Int?    // IMAP UID
+  threadId    String? // For threading (In-Reply-To / References)
+
+  // Email headers
+  fromEmail   String
+  fromName    String?
+  toEmails    String[] // Array of recipient emails
+  ccEmails    String[] // Array of CC emails
+  bccEmails   String[] // Array of BCC emails
+  replyTo     String?
+  subject     String?
+
+  // Content
+  textBody    String? // Plain text body
+  htmlBody    String? // HTML body
+  snippet     String? // Short preview
+
+  // Attachments stored as JSON array
+  // [{ filename: "doc.pdf", mimeType: "application/pdf", size: 12345, cid: "...", url: "..." }]
+  attachments Json?
+
+  // Flags
+  isRead      Boolean @default(false)
+  isStarred   Boolean @default(false)
+  isArchived  Boolean @default(false)
+  isDraft     Boolean @default(false)
+  isSent      Boolean @default(false) // true = outbound, false = inbound
+  isDeleted   Boolean @default(false)
+
+  // Link to CRM contact (auto-matched by email)
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  // Original email date
+  emailDate DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([emailAccountId, messageId])
+  @@index([contactId])
+  @@index([fromEmail])
+  @@index([emailDate])
+  @@index([isRead])
+  @@index([threadId])
+}
+
+// Webhook System
+enum WebhookEvent {
+  // Contact events
+  CONTACT_CREATED
+  CONTACT_UPDATED
+  CONTACT_DELETED
+  
+  // Deal events
+  DEAL_CREATED
+  DEAL_UPDATED
+  DEAL_DELETED
+  DEAL_STATUS_CHANGED
+  DEAL_WON
+  DEAL_LOST
+  
+  // Task events
+  TASK_CREATED
+  TASK_UPDATED
+  TASK_COMPLETED
+  TASK_DELETED
+  
+  // Lead events
+  LEAD_CREATED
+  LEAD_UPDATED
+  LEAD_CONVERTED
+  LEAD_DELETED
+  
+  // Message events
+  MESSAGE_RECEIVED
+  MESSAGE_SENT
+  
+  // Company events
+  COMPANY_CREATED
+  COMPANY_UPDATED
+  COMPANY_DELETED
+}
+
+enum WebhookStatus {
+  ACTIVE
+  PAUSED
+  FAILED
+}
+
+model Webhook {
+  id String @id @default(cuid())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Webhook configuration
+  name        String
+  description String?
+  url         String    // Endpoint URL to send events to
+  secret      String?   // Secret for HMAC signature verification
+  
+  // Events to subscribe to
+  events      WebhookEvent[]
+  
+  // Status
+  status      WebhookStatus @default(ACTIVE)
+  
+  // Retry configuration
+  maxRetries  Int       @default(3)
+  retryDelay  Int       @default(60) // seconds between retries
+  
+  // Headers to include in requests (JSON)
+  headers     Json?
+  
+  // Stats
+  totalDeliveries   Int @default(0)
+  successDeliveries Int @default(0)
+  failedDeliveries  Int @default(0)
+  lastDeliveryAt    DateTime?
+  lastError         String?
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Created by
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  deliveries WebhookDelivery[]
+
+  @@index([organizationId])
+  @@index([status])
+}
+
+model WebhookDelivery {
+  id String @id @default(cuid())
+
+  webhookId String
+  webhook   Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  // Event details
+  event     WebhookEvent
+  payload   Json          // Full event payload
+  
+  // Delivery status
+  success   Boolean
+  attempts  Int      @default(1)
+  
+  // Response details
+  statusCode    Int?
+  responseBody  String?
+  responseTime  Int?     // Response time in ms
+  error         String?
+  
+  // Timestamps
+  createdAt     DateTime @default(now())
+  deliveredAt   DateTime?
+  nextRetryAt   DateTime?
+
+  @@index([webhookId])
+  @@index([event])
+  @@index([createdAt])
+  @@index([success])
 }

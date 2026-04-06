@@ -20,6 +20,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { analyticsApi } from "@/lib/api";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface DashboardStats {
   totalContacts: number;
@@ -60,6 +61,7 @@ interface Task {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { formatCompact, format } = useCurrency();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [todayTasks, setTodayTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,16 +89,6 @@ export default function DashboardPage() {
 
     fetchData();
   }, []);
-
-  const formatAmount = (amount: number) => {
-    if (amount >= 1000000) {
-      return (amount / 1000000).toFixed(1) + ' млн';
-    }
-    if (amount >= 1000) {
-      return (amount / 1000).toFixed(0) + ' тыс';
-    }
-    return new Intl.NumberFormat('ru-RU').format(amount);
-  };
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -251,10 +243,9 @@ export default function DashboardPage() {
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-500/20 flex items-center justify-center">
                 <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
               </div>
-              <span className="text-xs text-gray-500 font-medium">RUB</span>
             </div>
             <div className="space-y-0.5 sm:space-y-1">
-              <p className="text-xl sm:text-3xl font-bold text-white">{formatAmount(stats.totalDealsAmount)}</p>
+              <p className="text-xl sm:text-3xl font-bold text-white">{formatCompact(stats.totalDealsAmount)}</p>
               <p className="text-gray-500 text-xs sm:text-sm">Сумма сделок</p>
             </div>
           </div>
@@ -404,7 +395,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-sm text-gray-500">
-                          {formatAmount(stage.totalAmount)} ₽
+                          {format(stage.totalAmount)}
                         </span>
                         <span className="text-sm font-semibold text-white w-8 text-right">
                           {stage.dealsCount}

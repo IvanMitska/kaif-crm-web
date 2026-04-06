@@ -33,6 +33,7 @@ import {
   FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/hooks/useCurrency";
 import { companiesApi } from "@/lib/api";
 import { CompanyModal } from "@/components/companies/CompanyModal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -65,6 +66,7 @@ const industryColors: Record<string, { bg: string; text: string }> = {
 };
 
 export default function CompaniesPage() {
+  const { formatCompact } = useCurrency();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
@@ -91,7 +93,7 @@ export default function CompaniesPage() {
       try {
         const response = await companiesApi.getAll();
         const companiesData = response.data?.items || response.data || [];
-        setCompanies(companiesData as Company[]);
+        setCompanies(Array.isArray(companiesData) ? companiesData as Company[] : []);
       } catch (error) {
         console.error("Failed to fetch companies:", error);
       }
@@ -174,12 +176,7 @@ export default function CompaniesPage() {
     }
   };
 
-  const formatRevenue = (revenue: number) => {
-    if (revenue >= 1000000) {
-      return `${(revenue / 1000000).toFixed(1)}М ₽`;
-    }
-    return `${(revenue / 1000).toFixed(0)}К ₽`;
-  };
+  const formatRevenue = (revenue: number) => formatCompact(revenue);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("ru-RU", {

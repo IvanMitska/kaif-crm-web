@@ -34,6 +34,7 @@ import { dealsApi, pipelinesApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { DealModal } from "@/components/deals/DealModal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Deal {
   id: string;
@@ -107,12 +108,7 @@ function DealCard({
   onQuickAction: (action: string, deal: Deal) => void;
 }) {
   const [showActions, setShowActions] = useState(false);
-
-  const formatAmount = (amount: number) => {
-    if (amount >= 1000000) return (amount / 1000000).toFixed(1) + "M";
-    if (amount >= 1000) return (amount / 1000).toFixed(0) + "K";
-    return new Intl.NumberFormat("ru-RU").format(amount);
-  };
+  const { formatCompact } = useCurrency();
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -150,8 +146,7 @@ function DealCard({
 
       {/* Amount - highlighted */}
       <div className="mb-3">
-        <span className="text-2xl font-bold text-white">{formatAmount(deal.amount)}</span>
-        <span className="text-sm text-gray-500 ml-1">₽</span>
+        <span className="text-2xl font-bold text-white">{formatCompact(deal.amount)}</span>
       </div>
 
       {/* Company & Contact */}
@@ -255,12 +250,7 @@ function KanbanColumn({
 }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const stageTotal = deals.reduce((sum, d) => sum + d.amount, 0);
-
-  const formatAmount = (amount: number) => {
-    if (amount >= 1000000) return (amount / 1000000).toFixed(1) + "M ₽";
-    if (amount >= 1000) return (amount / 1000).toFixed(0) + "K ₽";
-    return new Intl.NumberFormat("ru-RU").format(amount) + " ₽";
-  };
+  const { formatCompact } = useCurrency();
 
   // Empty state messages
   const emptyMessages = [
@@ -317,7 +307,7 @@ function KanbanColumn({
             </div>
             <div className="w-px h-8 bg-white/10" />
             <div>
-              <span className="text-lg font-bold text-white">{formatAmount(stageTotal)}</span>
+              <span className="text-lg font-bold text-white">{formatCompact(stageTotal)}</span>
             </div>
           </div>
         )}
@@ -387,12 +377,9 @@ function DealDetailModal({
   onDelete?: (deal: Deal) => void;
 }) {
   const [activeTab, setActiveTab] = useState<"info" | "tasks" | "history">("info");
+  const { format } = useCurrency();
 
   if (!isOpen || !deal) return null;
-
-  const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat("ru-RU").format(amount);
-  };
 
   // Calculate stage progress
   const currentStageIndex = stages.findIndex(s => s.id === deal.stageId);
@@ -481,8 +468,7 @@ function DealDetailModal({
             <div>
               <p className="text-sm text-gray-400 mb-1">Сумма сделки</p>
               <p className="text-4xl font-bold text-white">
-                {formatAmount(deal.amount)}
-                <span className="text-xl text-gray-500 ml-2">₽</span>
+                {format(deal.amount)}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -711,6 +697,7 @@ function DealDetailModal({
 export default function DealsPage() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [pipelines, setPipelines] = useState<any[]>([]);
+  const { formatCompact, format } = useCurrency();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStage] = useState<string | null>(null);
@@ -738,7 +725,7 @@ export default function DealsPage() {
         ]);
 
         const dealsData = dealsRes.data?.items || dealsRes.data || [];
-        setDeals(dealsData);
+        setDeals(Array.isArray(dealsData) ? dealsData : []);
 
         const pipelinesData = Array.isArray(pipelinesRes.data) ? pipelinesRes.data : [pipelinesRes.data];
         setPipelines(pipelinesData);
@@ -772,12 +759,6 @@ export default function DealsPage() {
 
   const getDealsForStage = (stageId: string) => {
     return filteredDeals.filter(deal => deal.stageId === stageId);
-  };
-
-  const formatAmount = (amount: number) => {
-    if (amount >= 1000000) return (amount / 1000000).toFixed(1) + " млн";
-    if (amount >= 1000) return (amount / 1000).toFixed(0) + " тыс";
-    return new Intl.NumberFormat("ru-RU").format(amount);
   };
 
   const totalAmount = deals.reduce((sum, deal) => sum + deal.amount, 0);
@@ -905,9 +886,8 @@ export default function DealsPage() {
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-green-500/20 flex items-center justify-center">
                 <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
               </div>
-              <span className="text-xs text-gray-500 font-medium">RUB</span>
             </div>
-            <p className="text-xl sm:text-3xl font-bold text-white">{formatAmount(totalAmount)}</p>
+            <p className="text-xl sm:text-3xl font-bold text-white">{formatCompact(totalAmount)}</p>
             <p className="text-gray-400 text-xs sm:text-sm mt-1">Общая сумма</p>
           </div>
 
@@ -917,7 +897,7 @@ export default function DealsPage() {
                 <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
               </div>
             </div>
-            <p className="text-xl sm:text-3xl font-bold text-white">{formatAmount(avgDealSize)}</p>
+            <p className="text-xl sm:text-3xl font-bold text-white">{formatCompact(avgDealSize)}</p>
             <p className="text-gray-400 text-xs sm:text-sm mt-1">Средний чек</p>
           </div>
 
@@ -1063,7 +1043,7 @@ export default function DealsPage() {
                       </td>
                       <td className="px-6 py-4">
                         <p className="font-bold text-white">
-                          {formatAmount(deal.amount)} ₽
+                          {format(deal.amount)}
                         </p>
                       </td>
                       <td className="px-6 py-4">

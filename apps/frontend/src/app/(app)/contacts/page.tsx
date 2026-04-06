@@ -69,7 +69,7 @@ export default function ContactsPage() {
       try {
         const response = await contactsApi.getAll();
         const contactsData = response.data?.items || response.data || [];
-        setContacts(contactsData as Contact[]);
+        setContacts(Array.isArray(contactsData) ? contactsData as Contact[] : []);
       } catch (error) {
         console.error("Failed to fetch contacts:", error);
       }

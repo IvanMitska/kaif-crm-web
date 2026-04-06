@@ -16,6 +16,7 @@ interface Organization {
   id: string;
   name: string;
   slug: string;
+  currency?: string;
 }
 
 interface OrganizationMembership {
@@ -42,6 +43,9 @@ interface AuthState {
   switchOrganization: (organizationId: string) => Promise<void>;
   setUser: (user: User | null) => void;
   setTokens: (accessToken: string, refreshToken: string) => void;
+  setOrganization: (organization: Organization | null) => void;
+  updateOrganization: (updates: Partial<Organization>) => void;
+  updateUser: (updates: Partial<User>) => void;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -214,6 +218,19 @@ export const useAuthStore = create<AuthState>()(
       setTokens: (accessToken, refreshToken) => {
         set({ accessToken, refreshToken, isAuthenticated: true });
         axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+      },
+      setOrganization: (organization) => set({ organization }),
+      updateOrganization: (updates) => {
+        const { organization } = get();
+        if (organization) {
+          set({ organization: { ...organization, ...updates } });
+        }
+      },
+      updateUser: (updates) => {
+        const { user } = get();
+        if (user) {
+          set({ user: { ...user, ...updates } });
+        }
       },
     }),
     {

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, Matches } from 'class-validator';
+import { IsString, IsOptional, Matches, IsIn } from 'class-validator';
 
 export class UpdateOrganizationDto {
   @IsString()
@@ -11,4 +11,11 @@ export class UpdateOrganizationDto {
     message: 'Slug может содержать только строчные буквы, цифры и дефисы',
   })
   slug?: string;
+
+  @IsString()
+  @IsOptional()
+  @IsIn(['THB', 'RUB', 'USD', 'EUR'], {
+    message: 'Валюта должна быть одной из: THB, RUB, USD, EUR',
+  })
+  currency?: string;
 }

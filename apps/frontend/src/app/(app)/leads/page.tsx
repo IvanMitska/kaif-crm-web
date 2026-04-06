@@ -13,7 +13,6 @@ import {
   Loader2,
   Zap,
   ArrowRight,
-  Clock,
   LayoutGrid,
   List,
   ChevronRight,
@@ -30,7 +29,7 @@ import {
   Calendar,
   ShoppingBag
 } from "lucide-react";
-import { leadsApi } from "@/lib/api";
+import { leadsApi, usersApi } from "@/lib/api";
 import { LeadModal } from "@/components/leads/LeadModal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
@@ -44,6 +43,19 @@ interface Lead {
   company?: string;
   description?: string;
   createdAt: string;
+  assignedToId?: string;
+  assignedTo?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+}
+
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
 }
 
 const leadStages = [
@@ -61,14 +73,9 @@ const sourceConfig: Record<string, { icon: any; color: string; bg: string; label
   telegram: { icon: MessageSquare, color: "text-sky-400", bg: "bg-sky-500/20", label: "Telegram" },
 };
 
-const responsibleUsers = [
-  { id: "1", name: "Алексей И.", avatar: "А" },
-  { id: "2", name: "Мария П.", avatar: "М" },
-  { id: "3", name: "Дмитрий К.", avatar: "Д" },
-];
-
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"kanban" | "list">("list");
@@ -101,20 +108,42 @@ export default function LeadsPage() {
   }, []);
 
   useEffect(() => {
-    fetchLeads();
+    fetchData();
   }, []);
 
-  const fetchLeads = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await leadsApi.getAll();
-      const leadsData = res.data.items || res.data;
-      setLeads(leadsData);
+      const [leadsRes, usersRes] = await Promise.allSettled([
+        leadsApi.getAll(),
+        usersApi.getAll(),
+      ]);
+
+      if (leadsRes.status === "fulfilled") {
+        const leadsData = leadsRes.value.data.items || leadsRes.value.data || [];
+        setLeads(Array.isArray(leadsData) ? leadsData : []);
+      }
+
+      if (usersRes.status === "fulfilled") {
+        const usersData = usersRes.value.data.items || usersRes.value.data || [];
+        setUsers(Array.isArray(usersData) ? usersData : []);
+      }
     } catch (err) {
-      console.error("Failed to fetch leads:", err);
+      console.error("Failed to fetch data:", err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const getUserById = (userId?: string) => {
+    if (!userId) return null;
+    return users.find(u => u.id === userId);
+  };
+
+  const getInitials = (firstName?: string, lastName?: string) => {
+    const first = firstName?.charAt(0) || "";
+    const last = lastName?.charAt(0) || "";
+    return (first + last).toUpperCase() || "?";
   };
 
   const handleCreateLead = () => {
@@ -133,16 +162,13 @@ export default function LeadsPage() {
     try {
       if (editingLead?.id) {
         // Update existing lead
-        await leadsApi.update(editingLead.id, leadData);
-        setLeads(leads.map(l => l.id === editingLead.id ? { ...l, ...leadData } : l));
+        const response = await leadsApi.update(editingLead.id, leadData);
+        const updatedLead = response.data;
+        setLeads(leads.map(l => l.id === editingLead.id ? updatedLead : l));
       } else {
         // Create new lead
-        const newLead: Lead = {
-          ...leadData,
-          id: `lead-${Date.now()}`,
-          createdAt: new Date().toISOString(),
-        };
-        // For mock mode, add to local state
+        const response = await leadsApi.create(leadData);
+        const newLead = response.data;
         setLeads([newLead, ...leads]);
       }
       setIsModalOpen(false);
@@ -377,7 +403,7 @@ export default function LeadsPage() {
                     {stageLeads.map((lead) => {
                       const source = getSource(lead.source);
                       const SourceIcon = source.icon;
-                      const responsible = responsibleUsers[Math.floor(Math.random() * responsibleUsers.length)];
+                      const assignedUser = lead.assignedTo || getUserById(lead.assignedToId);
 
                       return (
                         <div
@@ -415,9 +441,15 @@ export default function LeadsPage() {
                           {/* Footer */}
                           <div className="flex items-center justify-between pt-3 border-t border-white/5">
                             <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-violet-500 flex items-center justify-center text-white text-xs font-semibold">
-                                {responsible.avatar}
-                              </div>
+                              {assignedUser ? (
+                                <div className="w-6 h-6 rounded-full bg-violet-500 flex items-center justify-center text-white text-xs font-semibold">
+                                  {getInitials(assignedUser.firstName, assignedUser.lastName)}
+                                </div>
+                              ) : (
+                                <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center text-gray-400 text-xs">
+                                  —
+                                </div>
+                              )}
                               <span className="text-xs text-gray-400">{formatDate(lead.createdAt)}</span>
                             </div>
                             <button className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-violet-400 bg-violet-500/20 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-violet-500/30">
@@ -528,8 +560,7 @@ export default function LeadsPage() {
                 const SourceIcon = source.icon;
                 const stage = leadStages.find((s) => s.id === lead.status);
                 const isSelected = selectedLeads.has(lead.id);
-                const responsible = responsibleUsers[index % responsibleUsers.length];
-                const tasksCount = Math.floor(Math.random() * 3);
+                const assignedUser = lead.assignedTo || getUserById(lead.assignedToId);
 
                 return (
                   <div
@@ -698,14 +729,7 @@ export default function LeadsPage() {
 
                     {/* Tasks */}
                     <div className="w-[120px] px-4">
-                      {tasksCount > 0 ? (
-                        <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-orange-500/20 text-orange-400 rounded-md text-xs font-medium">
-                          <Clock className="w-3.5 h-3.5" />
-                          {tasksCount} задач
-                        </span>
-                      ) : (
-                        <span className="text-gray-500 text-sm">—</span>
-                      )}
+                      <span className="text-gray-500 text-sm">—</span>
                     </div>
 
                     {/* Contact */}
@@ -730,12 +754,18 @@ export default function LeadsPage() {
 
                     {/* Responsible */}
                     <div className="w-[140px] px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white text-xs font-semibold">
-                          {responsible.avatar}
+                      {assignedUser ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white text-xs font-semibold">
+                            {getInitials(assignedUser.firstName, assignedUser.lastName)}
+                          </div>
+                          <span className="text-sm text-gray-300">
+                            {assignedUser.firstName} {assignedUser.lastName?.charAt(0)}.
+                          </span>
                         </div>
-                        <span className="text-sm text-gray-300">{responsible.name}</span>
-                      </div>
+                      ) : (
+                        <span className="text-gray-500 text-sm">Не назначен</span>
+                      )}
                     </div>
 
                     {/* Date */}

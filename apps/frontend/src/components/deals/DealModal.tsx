@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface DealModalProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ interface DealModalProps {
 }
 
 export function DealModal({ isOpen, onClose, onSave, deal, stages }: DealModalProps) {
+  const { symbol } = useCurrency();
   const [formData, setFormData] = useState({
     title: deal?.title || "",
     company: deal?.company || "",
@@ -89,7 +91,7 @@ export function DealModal({ isOpen, onClose, onSave, deal, stages }: DealModalPr
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="amount" className="text-gray-400">Сумма (₽)</Label>
+                <Label htmlFor="amount" className="text-gray-400">Сумма ({symbol})</Label>
                 <Input
                   id="amount"
                   type="number"

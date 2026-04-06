@@ -60,20 +60,23 @@ export default function TasksPage() {
         ]);
 
         const tasksData = tasksRes.data?.items || tasksRes.data || [];
-        setTasks(tasksData as Task[]);
+        const tasksArray = Array.isArray(tasksData) ? tasksData as Task[] : [];
+        setTasks(tasksArray);
 
         const contactsData = contactsRes.data?.items || contactsRes.data || [];
-        setContacts(contactsData.map((c: any) => ({
+        const contactsArray = Array.isArray(contactsData) ? contactsData : [];
+        setContacts(contactsArray.map((c: any) => ({
           id: c.id,
           name: `${c.firstName} ${c.lastName}`
         })));
 
         const dealsData = dealsRes.data?.items || dealsRes.data || [];
-        setDeals(dealsData.map((d: any) => ({ id: d.id, title: d.title })));
+        const dealsArray = Array.isArray(dealsData) ? dealsData : [];
+        setDeals(dealsArray.map((d: any) => ({ id: d.id, title: d.title })));
 
         // Extract unique assignees from tasks
         const uniqueAssignees = new Map();
-        (tasksData as Task[]).forEach((task) => {
+        tasksArray.forEach((task) => {
           if (task.assignee) {
             uniqueAssignees.set(task.assignee.id, task.assignee);
           }
