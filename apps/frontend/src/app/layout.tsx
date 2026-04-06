@@ -20,9 +20,18 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/logo-icon.png", type: "image/png" },
+      { url: "/logo-icon.png", type: "image/png", sizes: "512x512" },
     ],
-    apple: "/logo-icon.png",
+    apple: [
+      { url: "/logo-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+    shortcut: "/favicon.svg",
+  },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Sintara CRM",
   },
   openGraph: {
     type: "website",
