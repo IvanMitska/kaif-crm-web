@@ -37,7 +37,7 @@ export class EmailService {
       OPERATOR: 'Оператор',
     };
 
-    const subject = `Приглашение в ${organizationName} - Sintara CRM`;
+    const subject = `${inviterName} приглашает вас в ${organizationName}`;
     const html = `
 <!DOCTYPE html>
 <html>
@@ -45,30 +45,64 @@ export class EmailService {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px;">
-  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-    <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 32px; text-align: center;">
-      <h1 style="color: #ffffff; margin: 0; font-size: 28px;">Sintara CRM</h1>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0f0f17; margin: 0; padding: 40px 20px;">
+  <div style="max-width: 480px; margin: 0 auto;">
+
+    <!-- Logo -->
+    <div style="text-align: center; margin-bottom: 32px;">
+      <img src="https://www.sintara-crm.com/logo.png" alt="Sintara CRM" style="height: 140px; width: auto;" />
     </div>
-    <div style="padding: 32px;">
-      <h2 style="color: #1f2937; margin: 0 0 16px;">Вас пригласили в команду!</h2>
-      <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-        <strong>${inviterName}</strong> приглашает вас присоединиться к организации
-        <strong>${organizationName}</strong> в роли <strong>${roleNames[role] || role}</strong>.
+
+    <!-- Main Card -->
+    <div style="background: linear-gradient(180deg, #12121c 0%, #16162a 100%); border-radius: 24px; padding: 40px; border: 1px solid rgba(255,255,255,0.08);">
+
+      <!-- Avatar -->
+      <div style="text-align: center; margin-bottom: 24px;">
+        <div style="display: inline-block; width: 64px; height: 64px; background: linear-gradient(135deg, #06b6d4 0%, #14b8a6 100%); border-radius: 50%; line-height: 64px; font-size: 24px; font-weight: 600; color: #ffffff;">
+          ${inviterName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+        </div>
+      </div>
+
+      <!-- Title -->
+      <h1 style="color: #ffffff; font-size: 24px; font-weight: 700; text-align: center; margin: 0 0 8px; letter-spacing: -0.5px;">
+        Вас пригласили в команду
+      </h1>
+
+      <p style="color: #9ca3af; font-size: 16px; text-align: center; margin: 0 0 32px; line-height: 1.5;">
+        <span style="color: #ffffff; font-weight: 600;">${inviterName}</span> приглашает вас<br>
+        присоединиться к <span style="color: #ffffff; font-weight: 600;">${organizationName}</span>
       </p>
-      <div style="text-align: center; margin: 32px 0;">
-        <a href="${inviteUrl}" style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+
+      <!-- Role Badge -->
+      <div style="text-align: center; margin-bottom: 32px;">
+        <span style="display: inline-block; background: rgba(139, 92, 246, 0.2); color: #a78bfa; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500;">
+          ${roleNames[role] || role}
+        </span>
+      </div>
+
+      <!-- CTA Button -->
+      <div style="margin-bottom: 32px;">
+        <a href="${inviteUrl}" style="display: block; width: 100%; background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #8b5cf6 100%); color: #ffffff; text-decoration: none; padding: 18px 32px; border-radius: 14px; font-weight: 600; font-size: 16px; text-align: center; box-sizing: border-box;">
           Принять приглашение
         </a>
       </div>
-      <p style="color: #9ca3af; font-size: 14px; margin: 24px 0 0;">
-        Ссылка действительна до ${expiresAt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}.
-      </p>
-      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
-      <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-        Если вы не ожидали это приглашение, просто проигнорируйте это письмо.
+
+      <!-- Expiry -->
+      <p style="color: #6b7280; font-size: 13px; text-align: center; margin: 0;">
+        Ссылка действительна до ${expiresAt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
       </p>
     </div>
+
+    <!-- Footer -->
+    <div style="text-align: center; margin-top: 32px;">
+      <p style="color: #4b5563; font-size: 12px; margin: 0 0 8px;">
+        Если вы не ожидали это приглашение, просто проигнорируйте письмо.
+      </p>
+      <p style="color: #374151; font-size: 11px; margin: 0;">
+        © ${new Date().getFullYear()} Sintara CRM
+      </p>
+    </div>
+
   </div>
 </body>
 </html>
