@@ -21,7 +21,6 @@ import {
   X,
   Zap,
   ChevronRight,
-  Plus,
   CalendarClock,
   UserCog,
 } from "lucide-react";
@@ -203,16 +202,6 @@ export default function AppLayout({
             <X size={18} className="text-gray-400" />
           </button>
         </div>
-
-        {/* Quick Actions */}
-        {(sidebarOpen || isMobile) && (
-          <div className="px-3 py-3 border-b border-white/5">
-            <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-xl font-semibold text-sm hover:opacity-90 shadow-lg shadow-purple-500/25">
-              <Plus size={18} strokeWidth={2.5} />
-              Быстрое действие
-            </button>
-          </div>
-        )}
 
         {/* Main Navigation */}
         <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-1 scrollbar-minimal">
