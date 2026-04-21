@@ -18,6 +18,11 @@ import { LeadsModule } from './modules/leads/leads.module';
 import { InvitationsModule } from './modules/invitations/invitations.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { EmailModule } from './modules/email/email.module';
+import { BookingModule } from './modules/booking/booking.module';
+import { TelegramModule } from './modules/telegram/telegram.module';
+import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
+import { EmailImapModule } from './modules/email-imap/email-imap.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -56,6 +61,11 @@ import { EmailModule } from './modules/email/email.module';
     LeadsModule,
     InvitationsModule,
     OrganizationsModule,
+    BookingModule,
+    TelegramModule,
+    WhatsAppModule,
+    EmailImapModule,
+    WebhooksModule,
   ],
 })
 export class AppModule {}

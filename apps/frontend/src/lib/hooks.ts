@@ -17,7 +17,7 @@ export function useContacts() {
     "contacts",
     async () => {
       const res = await contactsApi.getAll();
-      return res.data.items || res.data || [];
+      return res.data.items || res.data?.data || res.data || [];
     },
     swrConfig
   );
@@ -36,7 +36,7 @@ export function useDeals() {
     "deals",
     async () => {
       const res = await dealsApi.getAll();
-      return res.data.items || res.data || [];
+      return res.data.items || res.data?.data || res.data || [];
     },
     swrConfig
   );
@@ -75,7 +75,7 @@ export function useLeads() {
     "leads",
     async () => {
       const res = await leadsApi.getAll();
-      return res.data.items || res.data || [];
+      return res.data.items || res.data?.data || res.data || [];
     },
     swrConfig
   );
@@ -94,7 +94,7 @@ export function useCompanies() {
     "companies",
     async () => {
       const res = await companiesApi.getAll();
-      return res.data.items || res.data || [];
+      return res.data.items || res.data?.data || res.data || [];
     },
     swrConfig
   );
@@ -113,7 +113,7 @@ export function useBookingResources(params?: { type?: string; category?: string;
     ["booking-resources", params],
     async () => {
       const res = await bookingApi.getResources(params);
-      return res.data.items || res.data || [];
+      return res.data.items || res.data?.data || res.data || [];
     },
     swrConfig
   );
@@ -132,7 +132,7 @@ export function useBookingServices(params?: { isActive?: boolean; resourceId?: s
     ["booking-services", params],
     async () => {
       const res = await bookingApi.getServices(params);
-      return res.data.items || res.data || [];
+      return res.data.items || res.data?.data || res.data || [];
     },
     swrConfig
   );
@@ -158,7 +158,7 @@ export function useBookings(params?: {
     ["bookings", params],
     async () => {
       const res = await bookingApi.getBookings(params);
-      return res.data.items || res.data || [];
+      return res.data.items || res.data?.data || res.data || [];
     },
     swrConfig
   );
@@ -195,7 +195,7 @@ export function useWaitingList(params?: { status?: string; resourceId?: string; 
     ["waiting-list", params],
     async () => {
       const res = await bookingApi.getWaitingList(params);
-      return res.data.items || res.data || [];
+      return res.data.items || res.data?.data || res.data || [];
     },
     swrConfig
   );

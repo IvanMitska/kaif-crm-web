@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Send,
   Phone,
@@ -18,10 +19,13 @@ import {
   Mic,
   Pin,
   ChevronLeft,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { messagesApi } from "@/lib/api";
 
-// Channel icons (simplified)
+// Channel icons
 const WhatsAppIcon = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
@@ -40,182 +44,236 @@ const InstagramIcon = () => (
   </svg>
 );
 
-const channels = [
-  { id: "all", name: "Все", icon: MessageSquare, count: 50, color: "bg-gray-500" },
-  { id: "whatsapp", name: "WhatsApp", icon: WhatsAppIcon, count: 12, color: "bg-green-500" },
-  { id: "telegram", name: "Telegram", icon: TelegramIcon, count: 8, color: "bg-blue-500" },
-  { id: "instagram", name: "Instagram", icon: InstagramIcon, count: 5, color: "bg-gradient-to-br from-purple-500 to-pink-500" },
-  { id: "email", name: "Email", icon: Mail, count: 15, color: "bg-red-500" },
-  { id: "phone", name: "Звонки", icon: PhoneCall, count: 7, color: "bg-amber-500" },
-];
+interface ChannelStat {
+  channel: string;
+  count: number;
+  unreadCount: number;
+}
 
-const conversations = [
-  {
-    id: 1,
-    name: "Иван Иванов",
-    avatar: "ИИ",
-    lastMessage: "Добрый день! Интересует стоимость...",
-    time: "10:30",
-    unread: 2,
-    channel: "whatsapp",
-    online: true,
-    pinned: true,
-  },
-  {
-    id: 2,
-    name: "ООО Технологии",
-    avatar: "ОТ",
-    lastMessage: "Спасибо за предложение, рассмотрим",
-    time: "09:15",
-    unread: 0,
-    channel: "telegram",
-    online: false,
-    pinned: true,
-  },
-  {
-    id: 3,
-    name: "Петр Петров",
-    avatar: "ПП",
-    lastMessage: "Когда можем встретиться?",
-    time: "Вчера",
-    unread: 1,
-    channel: "email",
-    online: true,
-    pinned: false,
-  },
-  {
-    id: 4,
-    name: "Анна Сидорова",
-    avatar: "АС",
-    lastMessage: "Отправила документы на почту",
-    time: "Вчера",
-    unread: 0,
-    channel: "instagram",
-    online: false,
-    pinned: false,
-  },
-  {
-    id: 5,
-    name: "Дмитрий Козлов",
-    avatar: "ДК",
-    lastMessage: "Договорились, жду звонка",
-    time: "Пн",
-    unread: 0,
-    channel: "whatsapp",
-    online: true,
-    pinned: false,
-  },
-  {
-    id: 6,
-    name: "Елена Новикова",
-    avatar: "ЕН",
-    lastMessage: "Отлично, спасибо за информацию!",
-    time: "Пн",
-    unread: 0,
-    channel: "telegram",
-    online: false,
-    pinned: false,
-  },
-];
+interface Conversation {
+  contactId: string;
+  contact: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    phone: string | null;
+    email: string | null;
+    avatar: string | null;
+  };
+  lastMessage: {
+    id: string;
+    content: string;
+    channel: string;
+    direction: string;
+    createdAt: string;
+    isRead: boolean;
+  } | null;
+  unreadCount: number;
+  lastChannel: string;
+  isPinned: boolean;
+  updatedAt: string;
+}
 
-const messages = [
-  {
-    id: 1,
-    sender: "Иван Иванов",
-    content: "Добрый день!",
-    time: "10:25",
-    isMe: false,
-    status: "read",
-  },
-  {
-    id: 2,
-    sender: "Иван Иванов",
-    content: "Интересует стоимость вашего продукта для компании из 50 человек.",
-    time: "10:28",
-    isMe: false,
-    status: "read",
-  },
-  {
-    id: 3,
-    sender: "Вы",
-    content: "Здравствуйте, Иван! Для компании вашего размера у нас есть специальное предложение. Могу выслать подробную презентацию?",
-    time: "10:29",
-    isMe: true,
-    status: "read",
-  },
-  {
-    id: 4,
-    sender: "Иван Иванов",
-    content: "Да, было бы отлично. Также интересует возможность интеграции с нашей текущей системой.",
-    time: "10:30",
-    isMe: false,
-    status: "read",
-  },
-  {
-    id: 5,
-    sender: "Вы",
-    content: "Конечно! У нас есть готовые интеграции с большинством популярных систем. Какую именно вы используете?",
-    time: "10:31",
-    isMe: true,
-    status: "delivered",
-  },
-];
+interface Message {
+  id: string;
+  content: string;
+  channel: string;
+  direction: string;
+  isRead: boolean;
+  createdAt: string;
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+}
+
+const channelConfig: Record<string, { name: string; icon: React.ComponentType<any>; color: string }> = {
+  all: { name: "Все", icon: MessageSquare, color: "bg-gray-500" },
+  whatsapp: { name: "WhatsApp", icon: WhatsAppIcon, color: "bg-green-500" },
+  telegram: { name: "Telegram", icon: TelegramIcon, color: "bg-blue-500" },
+  instagram: { name: "Instagram", icon: InstagramIcon, color: "bg-gradient-to-br from-purple-500 to-pink-500" },
+  email: { name: "Email", icon: Mail, color: "bg-red-500" },
+  phone: { name: "Звонки", icon: PhoneCall, color: "bg-amber-500" },
+  sms: { name: "SMS", icon: MessageSquare, color: "bg-teal-500" },
+};
 
 const getChannelColor = (channelId: string) => {
-  const channel = channels.find(c => c.id === channelId);
-  return channel?.color || "bg-gray-500";
+  return channelConfig[channelId]?.color || "bg-gray-500";
 };
 
 const getChannelIcon = (channelId: string) => {
-  switch (channelId) {
-    case "whatsapp": return <WhatsAppIcon />;
-    case "telegram": return <TelegramIcon />;
-    case "instagram": return <InstagramIcon />;
-    case "email": return <Mail className="w-4 h-4" />;
-    case "phone": return <PhoneCall className="w-4 h-4" />;
-    default: return <MessageSquare className="w-4 h-4" />;
+  const config = channelConfig[channelId];
+  if (!config) return <MessageSquare className="w-4 h-4" />;
+  const Icon = config.icon;
+  return typeof Icon === 'function' && Icon.length === 0 ? <Icon /> : <Icon className="w-4 h-4" />;
+};
+
+const getInitials = (firstName: string, lastName: string) => {
+  return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || '?';
+};
+
+const formatTime = (dateStr: string) => {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+  if (days === 0) {
+    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  } else if (days === 1) {
+    return 'Вчера';
+  } else if (days < 7) {
+    return date.toLocaleDateString('ru-RU', { weekday: 'short' });
+  } else {
+    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
   }
 };
 
+const formatMessageTime = (dateStr: string) => {
+  return new Date(dateStr).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+};
+
 export default function MessagesPage() {
+  const searchParams = useSearchParams();
+  const urlContactId = searchParams.get("contactId");
+  const [channels, setChannels] = useState<ChannelStat[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentMessages, setCurrentMessages] = useState<Message[]>([]);
   const [selectedChannel, setSelectedChannel] = useState("all");
-  const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(urlContactId);
   const [message, setMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const filteredConversations = conversations.filter(conv => {
-    if (selectedChannel !== "all" && conv.channel !== selectedChannel) return false;
-    if (searchQuery && !conv.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
-
-  const pinnedConversations = filteredConversations.filter(c => c.pinned);
-  const otherConversations = filteredConversations.filter(c => !c.pinned);
-
-  const selectedConv = conversations.find(c => c.id === selectedConversation);
-
-  const totalUnread = conversations.reduce((sum, c) => sum + c.unread, 0);
+  // Fetch channel stats and conversations
+  const fetchConversations = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [statsRes, convsRes] = await Promise.all([
+        messagesApi.getChannelStats(),
+        messagesApi.getConversations({
+          channel: selectedChannel !== 'all' ? selectedChannel : undefined,
+          search: searchQuery || undefined,
+        }),
+      ]);
+      setChannels(statsRes.data || []);
+      setConversations(convsRes.data?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch conversations:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedChannel, searchQuery]);
 
   useEffect(() => {
+    fetchConversations();
+  }, [fetchConversations]);
+
+  // Fetch messages when conversation is selected
+  const fetchMessages = useCallback(async (contactId: string) => {
+    setIsLoadingMessages(true);
+    try {
+      const res = await messagesApi.getConversation(contactId);
+      setCurrentMessages(res.data?.messages || []);
+      // Mark conversation as read
+      if (res.data?.unreadCount > 0) {
+        await messagesApi.markConversationAsRead(contactId);
+        // Update local state
+        setConversations(prev => prev.map(c =>
+          c.contactId === contactId ? { ...c, unreadCount: 0 } : c
+        ));
+      }
+    } catch (error) {
+      console.error('Failed to fetch messages:', error);
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedContactId) {
+      fetchMessages(selectedContactId);
+    }
+  }, [selectedContactId, fetchMessages]);
+
+  useEffect(() => {
+    if (urlContactId && urlContactId !== selectedContactId) {
+      setSelectedContactId(urlContactId);
+    }
+  }, [urlContactId]);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [currentMessages]);
+
+  // Send message
+  const handleSendMessage = async () => {
+    if (!message.trim() || !selectedContactId || isSending) return;
+
+    const selectedConv = conversations.find(c => c.contactId === selectedContactId);
+    if (!selectedConv) return;
+
+    setIsSending(true);
+    try {
+      const res = await messagesApi.send({
+        contactId: selectedContactId,
+        content: message.trim(),
+        channel: selectedConv.lastChannel || 'whatsapp',
+      });
+
+      // Add message to local state
+      setCurrentMessages(prev => [...prev, res.data]);
+      setMessage("");
+
+      // Update conversation's last message
+      setConversations(prev => prev.map(c =>
+        c.contactId === selectedContactId
+          ? {
+              ...c,
+              lastMessage: {
+                id: res.data.id,
+                content: res.data.content,
+                channel: res.data.channel,
+                direction: 'outbound',
+                createdAt: res.data.createdAt,
+                isRead: true,
+              },
+              updatedAt: res.data.createdAt,
+            }
+          : c
+      ));
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const selectedConv = conversations.find(c => c.contactId === selectedContactId);
+
+  const pinnedConversations = conversations.filter(c => c.isPinned);
+  const otherConversations = conversations.filter(c => !c.isPinned);
 
   return (
     <div className="h-full min-h-full flex">
       {/* Channels Sidebar - hidden on mobile */}
       <div className="hidden md:flex w-20 glass-card border-r border-white/5 flex-col py-4">
         {channels.map((channel) => {
-          const Icon = channel.icon;
-          const isActive = selectedChannel === channel.id;
-          const unreadCount = channel.id === "all"
-            ? totalUnread
-            : conversations.filter(c => c.channel === channel.id).reduce((sum, c) => sum + c.unread, 0);
+          const config = channelConfig[channel.channel];
+          if (!config) return null;
+          const Icon = config.icon;
+          const isActive = selectedChannel === channel.channel;
+          const unreadCount = channel.unreadCount;
 
           return (
             <button
-              key={channel.id}
-              onClick={() => setSelectedChannel(channel.id)}
+              key={channel.channel}
+              onClick={() => setSelectedChannel(channel.channel)}
               className={cn(
                 "relative flex flex-col items-center gap-1.5 py-3 mx-2 rounded-xl",
                 isActive
@@ -229,7 +287,7 @@ export default function MessagesPage() {
               )}>
                 {typeof Icon === 'function' && Icon.length === 0 ? <Icon /> : <Icon className="w-5 h-5" />}
               </div>
-              <span className="text-[10px] font-medium">{channel.name}</span>
+              <span className="text-[10px] font-medium">{config.name}</span>
               {unreadCount > 0 && (
                 <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
                   {unreadCount > 99 ? "99+" : unreadCount}
@@ -240,15 +298,24 @@ export default function MessagesPage() {
         })}
       </div>
 
-      {/* Conversations List - full width on mobile, hidden when chat open */}
+      {/* Conversations List */}
       <div className={cn(
         "glass-card border-r border-white/5 flex flex-col",
         "w-full md:w-80",
-        selectedConversation ? "hidden md:flex" : "flex"
+        selectedContactId ? "hidden md:flex" : "flex"
       )}>
         {/* Header */}
         <div className="p-4 border-b border-white/5">
-          <h2 className="text-lg font-bold text-white mb-3">Сообщения</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold text-white">Сообщения</h2>
+            <button
+              onClick={fetchConversations}
+              className="p-2 hover:bg-white/5 rounded-lg"
+              disabled={isLoading}
+            >
+              <RefreshCw className={cn("w-4 h-4 text-gray-400", isLoading && "animate-spin")} />
+            </button>
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -263,43 +330,52 @@ export default function MessagesPage() {
 
         {/* Conversations */}
         <div className="flex-1 overflow-y-auto">
-          {pinnedConversations.length > 0 && (
-            <>
-              <div className="px-4 py-2">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Закреплённые</span>
-              </div>
-              {pinnedConversations.map((conv) => (
-                <ConversationItem
-                  key={conv.id}
-                  conversation={conv}
-                  isSelected={selectedConversation === conv.id}
-                  onClick={() => setSelectedConversation(conv.id)}
-                />
-              ))}
-            </>
-          )}
-
-          {otherConversations.length > 0 && (
-            <>
-              <div className="px-4 py-2">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Все диалоги</span>
-              </div>
-              {otherConversations.map((conv) => (
-                <ConversationItem
-                  key={conv.id}
-                  conversation={conv}
-                  isSelected={selectedConversation === conv.id}
-                  onClick={() => setSelectedConversation(conv.id)}
-                />
-              ))}
-            </>
-          )}
-
-          {filteredConversations.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-              <MessageSquare className="w-12 h-12 mb-3 text-gray-500" />
-              <p className="text-sm font-medium">Диалоги не найдены</p>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
             </div>
+          ) : (
+            <>
+              {pinnedConversations.length > 0 && (
+                <>
+                  <div className="px-4 py-2">
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Закреплённые</span>
+                  </div>
+                  {pinnedConversations.map((conv) => (
+                    <ConversationItem
+                      key={conv.contactId}
+                      conversation={conv}
+                      isSelected={selectedContactId === conv.contactId}
+                      onClick={() => setSelectedContactId(conv.contactId)}
+                    />
+                  ))}
+                </>
+              )}
+
+              {otherConversations.length > 0 && (
+                <>
+                  <div className="px-4 py-2">
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Все диалоги</span>
+                  </div>
+                  {otherConversations.map((conv) => (
+                    <ConversationItem
+                      key={conv.contactId}
+                      conversation={conv}
+                      isSelected={selectedContactId === conv.contactId}
+                      onClick={() => setSelectedContactId(conv.contactId)}
+                    />
+                  ))}
+                </>
+              )}
+
+              {conversations.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                  <MessageSquare className="w-12 h-12 mb-3 text-gray-500" />
+                  <p className="text-sm font-medium">Диалоги не найдены</p>
+                  <p className="text-xs text-gray-500 mt-1">Создайте контакт и отправьте сообщение</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -308,36 +384,35 @@ export default function MessagesPage() {
       {selectedConv ? (
         <div className={cn(
           "flex-1 flex flex-col glass-card",
-          selectedConversation ? "flex" : "hidden md:flex"
+          selectedContactId ? "flex" : "hidden md:flex"
         )}>
           {/* Chat Header */}
           <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-white/5 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 sm:gap-4">
               {/* Mobile back button */}
               <button
-                onClick={() => setSelectedConversation(null)}
+                onClick={() => setSelectedContactId(null)}
                 className="md:hidden p-2 hover:bg-white/5 rounded-xl"
               >
                 <ChevronLeft className="w-5 h-5 text-gray-400" />
               </button>
               <div className="relative">
                 <div className="w-10 sm:w-12 h-10 sm:h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm sm:text-base">
-                  {selectedConv.avatar}
+                  {getInitials(selectedConv.contact.firstName, selectedConv.contact.lastName)}
                 </div>
-                {selectedConv.online && (
-                  <span className="absolute bottom-0 right-0 w-3 sm:w-3.5 h-3 sm:h-3.5 bg-green-500 border-2 border-[#0a0a1a] rounded-full" />
-                )}
+                <span className={cn(
+                  "absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center text-white",
+                  getChannelColor(selectedConv.lastChannel)
+                )}>
+                  {getChannelIcon(selectedConv.lastChannel)}
+                </span>
               </div>
               <div>
-                <h3 className="font-semibold text-white text-sm sm:text-base">{selectedConv.name}</h3>
+                <h3 className="font-semibold text-white text-sm sm:text-base">
+                  {selectedConv.contact.firstName} {selectedConv.contact.lastName}
+                </h3>
                 <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-400">
-                  <span className={cn(
-                    "w-4 h-4 rounded flex items-center justify-center text-white",
-                    getChannelColor(selectedConv.channel)
-                  )}>
-                    {getChannelIcon(selectedConv.channel)}
-                  </span>
-                  <span className="hidden sm:inline">{selectedConv.online ? "Онлайн" : "Был(а) недавно"}</span>
+                  <span>{selectedConv.contact.phone || selectedConv.contact.email || 'Нет контактов'}</span>
                 </div>
               </div>
             </div>
@@ -360,61 +435,78 @@ export default function MessagesPage() {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-3 sm:p-6">
-            <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4">
-              {/* Date separator */}
-              <div className="flex items-center justify-center">
-                <span className="px-3 py-1 bg-white/10 rounded-full text-xs text-gray-400 shadow-sm">
-                  Сегодня
-                </span>
+            {isLoadingMessages ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
               </div>
-
-              {messages.map((msg, index) => {
-                const showAvatar = !msg.isMe && (index === 0 || messages[index - 1]?.isMe);
-
-                return (
-                  <div
-                    key={msg.id}
-                    className={cn(
-                      "flex gap-3",
-                      msg.isMe ? "justify-end" : "justify-start"
-                    )}
-                  >
-                    {!msg.isMe && (
-                      <div className="w-8 h-8 shrink-0">
-                        {showAvatar && (
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
-                            {selectedConv.avatar}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <div
-                      className={cn(
-                        "max-w-md rounded-2xl px-4 py-2.5 shadow-sm",
-                        msg.isMe
-                          ? "bg-violet-500 text-white rounded-br-md"
-                          : "bg-white/10 text-white rounded-bl-md"
-                      )}
-                    >
-                      <p className="text-sm leading-relaxed">{msg.content}</p>
-                      <div className={cn(
-                        "flex items-center justify-end gap-1 mt-1",
-                        msg.isMe ? "text-violet-200" : "text-gray-400"
-                      )}>
-                        <span className="text-[10px]">{msg.time}</span>
-                        {msg.isMe && (
-                          msg.status === "read"
-                            ? <CheckCheck className="w-3.5 h-3.5" />
-                            : <Check className="w-3.5 h-3.5" />
-                        )}
-                      </div>
-                    </div>
+            ) : (
+              <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4">
+                {currentMessages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                    <MessageSquare className="w-12 h-12 mb-3 text-gray-500" />
+                    <p className="text-sm font-medium">Нет сообщений</p>
+                    <p className="text-xs text-gray-500 mt-1">Начните диалог</p>
                   </div>
-                );
-              })}
-              <div ref={messagesEndRef} />
-            </div>
+                ) : (
+                  <>
+                    {/* Date separator */}
+                    <div className="flex items-center justify-center">
+                      <span className="px-3 py-1 bg-white/10 rounded-full text-xs text-gray-400 shadow-sm">
+                        Сегодня
+                      </span>
+                    </div>
+
+                    {currentMessages.map((msg, index) => {
+                      const isMe = msg.direction === 'outbound';
+                      const showAvatar = !isMe && (index === 0 || currentMessages[index - 1]?.direction === 'outbound');
+
+                      return (
+                        <div
+                          key={msg.id}
+                          className={cn(
+                            "flex gap-3",
+                            isMe ? "justify-end" : "justify-start"
+                          )}
+                        >
+                          {!isMe && (
+                            <div className="w-8 h-8 shrink-0">
+                              {showAvatar && (
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+                                  {getInitials(selectedConv.contact.firstName, selectedConv.contact.lastName)}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <div
+                            className={cn(
+                              "max-w-md rounded-2xl px-4 py-2.5 shadow-sm",
+                              isMe
+                                ? "bg-violet-500 text-white rounded-br-md"
+                                : "bg-white/10 text-white rounded-bl-md"
+                            )}
+                          >
+                            <p className="text-sm leading-relaxed">{msg.content}</p>
+                            <div className={cn(
+                              "flex items-center justify-end gap-1 mt-1",
+                              isMe ? "text-violet-200" : "text-gray-400"
+                            )}>
+                              <span className="text-[10px]">{formatMessageTime(msg.createdAt)}</span>
+                              {isMe && (
+                                msg.isRead
+                                  ? <CheckCheck className="w-3.5 h-3.5" />
+                                  : <Check className="w-3.5 h-3.5" />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
           </div>
 
           {/* Input Area */}
@@ -437,13 +529,13 @@ export default function MessagesPage() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey && message.trim()) {
                       e.preventDefault();
-                      // Send message
-                      setMessage("");
+                      handleSendMessage();
                     }
                   }}
                   rows={1}
                   className="w-full px-4 py-3 bg-white/5 rounded-2xl text-sm border-0 focus:ring-2 focus:ring-violet-500 focus:bg-white/10 resize-none text-white placeholder-gray-400"
                   style={{ minHeight: "48px", maxHeight: "120px" }}
+                  disabled={isSending}
                 />
               </div>
 
@@ -452,8 +544,16 @@ export default function MessagesPage() {
                   <Smile className="w-5 h-5 text-gray-400" />
                 </button>
                 {message.trim() ? (
-                  <button className="p-2.5 bg-violet-500 hover:bg-purple-500 rounded-xl">
-                    <Send className="w-5 h-5 text-white" />
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={isSending}
+                    className="p-2.5 bg-violet-500 hover:bg-purple-500 rounded-xl disabled:opacity-50"
+                  >
+                    {isSending ? (
+                      <Loader2 className="w-5 h-5 text-white animate-spin" />
+                    ) : (
+                      <Send className="w-5 h-5 text-white" />
+                    )}
                   </button>
                 ) : (
                   <button className="p-2.5 hover:bg-white/5 rounded-xl">
@@ -484,10 +584,12 @@ function ConversationItem({
   isSelected,
   onClick
 }: {
-  conversation: typeof conversations[0];
+  conversation: Conversation;
   isSelected: boolean;
   onClick: () => void;
 }) {
+  const initials = getInitials(conversation.contact.firstName, conversation.contact.lastName);
+
   return (
     <button
       onClick={onClick}
@@ -500,40 +602,41 @@ function ConversationItem({
     >
       <div className="relative shrink-0">
         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-          {conversation.avatar}
+          {initials}
         </div>
-        {conversation.online && (
-          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-[#0a0a1a] rounded-full" />
-        )}
         <span className={cn(
           "absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center text-white",
-          getChannelColor(conversation.channel)
+          getChannelColor(conversation.lastChannel)
         )}>
-          {getChannelIcon(conversation.channel)}
+          {getChannelIcon(conversation.lastChannel)}
         </span>
       </div>
 
       <div className="flex-1 min-w-0 text-left">
         <div className="flex items-center justify-between mb-0.5">
           <div className="flex items-center gap-1.5">
-            {conversation.pinned && (
+            {conversation.isPinned && (
               <Pin className="w-3 h-3 text-gray-400" />
             )}
             <span className={cn(
               "font-semibold text-sm truncate",
               isSelected ? "text-violet-400" : "text-white"
             )}>
-              {conversation.name}
+              {conversation.contact.firstName} {conversation.contact.lastName}
             </span>
           </div>
-          <span className="text-xs text-gray-400 shrink-0">{conversation.time}</span>
+          <span className="text-xs text-gray-400 shrink-0">
+            {conversation.lastMessage ? formatTime(conversation.lastMessage.createdAt) : ''}
+          </span>
         </div>
-        <p className="text-sm text-gray-400 truncate">{conversation.lastMessage}</p>
+        <p className="text-sm text-gray-400 truncate">
+          {conversation.lastMessage?.content || 'Нет сообщений'}
+        </p>
       </div>
 
-      {conversation.unread > 0 && (
+      {conversation.unreadCount > 0 && (
         <span className="shrink-0 min-w-[20px] h-5 rounded-full bg-violet-500 text-white text-xs font-bold flex items-center justify-center px-1.5">
-          {conversation.unread}
+          {conversation.unreadCount}
         </span>
       )}
     </button>

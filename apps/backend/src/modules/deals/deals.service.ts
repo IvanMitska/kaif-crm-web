@@ -1,14 +1,21 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, Deal, DealStatus } from '@prisma/client';
 import { CreateDealDto } from './dto/create-deal.dto';
 import { UpdateDealDto } from './dto/update-deal.dto';
 import { DealsFilterDto } from './dto/deals-filter.dto';
 import { MoveDealDto } from './dto/move-deal.dto';
+import { AutomationService, AutomationTriggerType } from '../automation/automation.service';
 
 @Injectable()
 export class DealsService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(DealsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => AutomationService))
+    private automationService: AutomationService,
+  ) {}
 
   async create(createDealDto: CreateDealDto, userId: string, organizationId: string) {
     const { products, ...dealData } = createDealDto;
@@ -63,6 +70,9 @@ export class DealsService {
       dealTitle: deal.title,
       amount: deal.amount,
     });
+
+    // Trigger automation for deal creation
+    this.triggerDealCreatedAutomation(deal.id, userId, organizationId);
 
     return deal;
   }
@@ -319,7 +329,7 @@ export class DealsService {
     });
 
     // Запускаем автоматизации при смене этапа
-    await this.triggerStageAutomations(id, oldStageId, moveDealDto.stageId);
+    await this.triggerStageAutomations(id, oldStageId, moveDealDto.stageId, userId, organizationId);
 
     return updated;
   }
@@ -361,6 +371,9 @@ export class DealsService {
     await this.createActivity(id, userId, won ? 'deal_won' : 'deal_lost', {
       amount: deal.amount,
     });
+
+    // Trigger automation for deal won/lost
+    this.triggerDealClosedAutomation(id, won, userId, organizationId);
 
     return updated;
   }
@@ -544,23 +557,43 @@ export class DealsService {
     return DealStatus.SUCCESS;
   }
 
-  private async triggerStageAutomations(dealId: string, oldStageId: string, newStageId: string) {
-    // Здесь будет логика запуска автоматизаций
-    // Например, отправка уведомлений, создание задач и т.д.
-    
-    const automations = await this.prisma.automation.findMany({
-      where: {
-        isActive: true,
-        trigger: {
-          path: ['type'],
-          equals: 'stage_changed',
+  private async triggerStageAutomations(
+    dealId: string,
+    oldStageId: string,
+    newStageId: string,
+    userId: string,
+    organizationId: string,
+  ) {
+    try {
+      // Запускаем автоматизации по триггеру смены этапа
+      const results = await this.automationService.executeByTrigger(
+        AutomationTriggerType.DEAL_STAGE_CHANGED,
+        {
+          dealId,
+          userId,
+          organizationId,
         },
-      },
-    });
+        {
+          fromStageId: oldStageId,
+          toStageId: newStageId,
+        },
+      );
 
-    for (const automation of automations) {
-      // Проверяем условия и выполняем действия
-      // Это заглушка для будущей реализации
+      // Логируем результаты
+      const successCount = results.filter((r) => r.success).length;
+      const errorCount = results.filter((r) => !r.success).length;
+
+      if (results.length > 0) {
+        this.logger.log(
+          `Stage change automations for deal ${dealId}: ${successCount} successful, ${errorCount} failed`
+        );
+      }
+
+      return results;
+    } catch (error: any) {
+      this.logger.error(`Failed to trigger stage automations: ${error?.message}`);
+      // Не бросаем ошибку, чтобы не прерывать основную операцию
+      return [];
     }
   }
 
@@ -591,5 +624,58 @@ export class DealsService {
       deal_duplicated: 'Сделка дублирована',
     };
     return descriptions[type] || type;
+  }
+
+  private async triggerDealCreatedAutomation(
+    dealId: string,
+    userId: string,
+    organizationId: string,
+  ) {
+    try {
+      const results = await this.automationService.executeByTrigger(
+        AutomationTriggerType.DEAL_CREATED,
+        {
+          dealId,
+          userId,
+          organizationId,
+        },
+      );
+
+      if (results.length > 0) {
+        const successCount = results.filter((r) => r.success).length;
+        this.logger.log(`Deal created automations: ${successCount}/${results.length} successful`);
+      }
+    } catch (error: any) {
+      this.logger.error(`Failed to trigger deal created automations: ${error?.message}`);
+    }
+  }
+
+  private async triggerDealClosedAutomation(
+    dealId: string,
+    won: boolean,
+    userId: string,
+    organizationId: string,
+  ) {
+    try {
+      const triggerType = won
+        ? AutomationTriggerType.DEAL_WON
+        : AutomationTriggerType.DEAL_LOST;
+
+      const results = await this.automationService.executeByTrigger(
+        triggerType,
+        {
+          dealId,
+          userId,
+          organizationId,
+        },
+      );
+
+      if (results.length > 0) {
+        const successCount = results.filter((r) => r.success).length;
+        this.logger.log(`Deal ${won ? 'won' : 'lost'} automations: ${successCount}/${results.length} successful`);
+      }
+    } catch (error: any) {
+      this.logger.error(`Failed to trigger deal closed automations: ${error?.message}`);
+    }
   }
 }

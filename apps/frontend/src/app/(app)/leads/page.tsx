@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   Search,
   Plus,
@@ -29,9 +31,10 @@ import {
   Calendar,
   ShoppingBag
 } from "lucide-react";
-import { leadsApi, usersApi } from "@/lib/api";
+import { leadsApi, usersApi, pipelinesApi, tasksApi, companiesApi } from "@/lib/api";
 import { LeadModal } from "@/components/leads/LeadModal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 
 interface Lead {
   id: string;
@@ -74,9 +77,15 @@ const sourceConfig: Record<string, { icon: any; color: string; bg: string; label
 };
 
 export default function LeadsPage() {
+  const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [pipelines, setPipelines] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Task dialog (for "Запланировать")
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+  const [taskPrefillTitle, setTaskPrefillTitle] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"kanban" | "list">("list");
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
@@ -114,9 +123,10 @@ export default function LeadsPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [leadsRes, usersRes] = await Promise.allSettled([
+      const [leadsRes, usersRes, pipelinesRes] = await Promise.allSettled([
         leadsApi.getAll(),
         usersApi.getAll(),
+        pipelinesApi.getAll(),
       ]);
 
       if (leadsRes.status === "fulfilled") {
@@ -128,10 +138,121 @@ export default function LeadsPage() {
         const usersData = usersRes.value.data.items || usersRes.value.data || [];
         setUsers(Array.isArray(usersData) ? usersData : []);
       }
+
+      if (pipelinesRes.status === "fulfilled") {
+        const pipelinesData = Array.isArray(pipelinesRes.value.data)
+          ? pipelinesRes.value.data
+          : [pipelinesRes.value.data];
+        setPipelines(pipelinesData);
+      }
     } catch (err) {
       console.error("Failed to fetch data:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCopyLead = async (lead: Lead) => {
+    const parts = [
+      lead.name,
+      lead.company && `Компания: ${lead.company}`,
+      lead.email && `Email: ${lead.email}`,
+      lead.phone && `Телефон: ${lead.phone}`,
+    ].filter(Boolean);
+    try {
+      await navigator.clipboard.writeText(parts.join("\n"));
+      toast.success("Данные лида скопированы");
+    } catch {
+      toast.error("Не удалось скопировать");
+    }
+    setOpenDropdown(null);
+    setOpenSubmenu(null);
+  };
+
+  const handleConvertToDeal = async (lead: Lead) => {
+    const firstStage = pipelines[0]?.stages?.sort((a: any, b: any) => a.order - b.order)?.[0];
+    if (!firstStage) {
+      toast.error("Нет доступных этапов воронки");
+      return;
+    }
+    try {
+      await leadsApi.convert(lead.id, {
+        createDeal: true,
+        stageId: firstStage.id,
+        dealTitle: `Сделка от лида: ${lead.name}`,
+      });
+      toast.success("Создана сделка и контакт");
+      await fetchData();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Не удалось конвертировать");
+    }
+    setOpenDropdown(null);
+    setOpenSubmenu(null);
+  };
+
+  const handleConvertToContact = async (lead: Lead) => {
+    try {
+      const res = await leadsApi.convert(lead.id, {});
+      toast.success("Создан контакт");
+      await fetchData();
+      if (res.data?.contact?.id) {
+        router.push(`/contacts`);
+      }
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Не удалось конвертировать");
+    }
+    setOpenDropdown(null);
+    setOpenSubmenu(null);
+  };
+
+  const handleCreateCompany = async (lead: Lead) => {
+    if (!lead.company) {
+      toast.error("У лида не указана компания");
+      return;
+    }
+    try {
+      await companiesApi.create({
+        name: lead.company,
+        email: lead.email,
+        phone: lead.phone,
+      });
+      toast.success("Компания создана");
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Не удалось создать компанию");
+    }
+    setOpenDropdown(null);
+    setOpenSubmenu(null);
+  };
+
+  const handleScheduleTask = (lead: Lead, type: "call" | "meeting" | "task" | "email") => {
+    const titles = {
+      call: `Позвонить: ${lead.name}`,
+      meeting: `Встреча: ${lead.name}`,
+      task: `Задача: ${lead.name}`,
+      email: `Написать email: ${lead.name}`,
+    };
+    setTaskPrefillTitle(titles[type]);
+    setIsTaskDialogOpen(true);
+    setOpenDropdown(null);
+    setOpenSubmenu(null);
+  };
+
+  const handleTaskSubmit = async (taskData: any) => {
+    try {
+      const payload: any = {
+        title: taskData.title,
+        description: taskData.description,
+        priority: taskData.priority,
+        status: taskData.status,
+        dueDate: taskData.dueDate,
+      };
+      Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
+      await tasksApi.create(payload);
+      toast.success("Задача создана");
+      setIsTaskDialogOpen(false);
+      setTaskPrefillTitle("");
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Не удалось создать задачу");
     }
   };
 
@@ -615,7 +736,7 @@ export default function LeadsPage() {
                           </button>
                           <button
                             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
-                            onClick={() => { setOpenDropdown(null); }}
+                            onClick={() => handleCopyLead(lead)}
                           >
                             <Copy className="w-4 h-4 text-gray-400" />
                             Копировать
@@ -645,13 +766,22 @@ export default function LeadsPage() {
                             </button>
                             {openSubmenu === "create" && (
                               <div className="absolute left-full top-0 ml-1 w-48 glass-card rounded-xl shadow-lg border border-white/10 py-1 z-50">
-                                <button className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
+                                <button
+                                  className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
+                                  onClick={() => handleConvertToDeal(lead)}
+                                >
                                   Сделку
                                 </button>
-                                <button className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
+                                <button
+                                  className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
+                                  onClick={() => handleConvertToContact(lead)}
+                                >
                                   Контакт
                                 </button>
-                                <button className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
+                                <button
+                                  className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
+                                  onClick={() => handleCreateCompany(lead)}
+                                >
                                   Компанию
                                 </button>
                               </div>
@@ -673,16 +803,28 @@ export default function LeadsPage() {
                             </button>
                             {openSubmenu === "schedule" && (
                               <div className="absolute left-full top-0 ml-1 w-48 glass-card rounded-xl shadow-lg border border-white/10 py-1 z-50">
-                                <button className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
+                                <button
+                                  className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
+                                  onClick={() => handleScheduleTask(lead, "call")}
+                                >
                                   Звонок
                                 </button>
-                                <button className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
+                                <button
+                                  className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
+                                  onClick={() => handleScheduleTask(lead, "meeting")}
+                                >
                                   Встречу
                                 </button>
-                                <button className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
+                                <button
+                                  className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
+                                  onClick={() => handleScheduleTask(lead, "task")}
+                                >
                                   Задачу
                                 </button>
-                                <button className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5">
+                                <button
+                                  className="w-full flex items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
+                                  onClick={() => handleScheduleTask(lead, "email")}
+                                >
                                   Email
                                 </button>
                               </div>
@@ -693,7 +835,10 @@ export default function LeadsPage() {
 
                           <button
                             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
-                            onClick={() => { setOpenDropdown(null); }}
+                            onClick={() => {
+                              toast.info("Маркетплейс интеграций скоро появится");
+                              setOpenDropdown(null);
+                            }}
                           >
                             <ShoppingBag className="w-4 h-4 text-gray-400" />
                             Маркетплейс
@@ -838,6 +983,17 @@ export default function LeadsPage() {
         cancelText="Отмена"
         variant="danger"
         isLoading={isDeleting}
+      />
+
+      {/* Schedule task dialog */}
+      <CreateTaskDialog
+        open={isTaskDialogOpen}
+        onOpenChange={(open) => {
+          setIsTaskDialogOpen(open);
+          if (!open) setTaskPrefillTitle("");
+        }}
+        onSubmit={handleTaskSubmit}
+        prefillTitle={taskPrefillTitle}
       />
     </div>
   );

@@ -202,7 +202,7 @@ export default function AnalyticsPage() {
 
       // Funnel from deals and pipelines
       if (dealsRes.status === 'fulfilled' && pipelinesRes.status === 'fulfilled') {
-        const deals = dealsRes.value.data?.items || dealsRes.value.data || [];
+        const deals = dealsRes.value.data?.items || dealsRes.value.data?.data || dealsRes.value.data || [];
         const pipelines = Array.isArray(pipelinesRes.value.data)
           ? pipelinesRes.value.data
           : [pipelinesRes.value.data];

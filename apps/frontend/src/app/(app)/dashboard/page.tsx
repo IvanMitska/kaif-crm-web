@@ -19,8 +19,9 @@ import {
   ArrowUpRight,
   Sparkles
 } from "lucide-react";
-import { analyticsApi } from "@/lib/api";
+import { analyticsApi, tasksApi } from "@/lib/api";
 import { useCurrency } from "@/hooks/useCurrency";
+import { toast } from "sonner";
 
 interface DashboardStats {
   totalContacts: number;
@@ -110,16 +111,32 @@ export default function DashboardPage() {
     });
   };
 
-  const toggleTask = (taskId: string) => {
+  const toggleTask = async (taskId: string) => {
+    const wasCompleted = completedTasks.has(taskId);
+    // optimistic update
     setCompletedTasks(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(taskId)) {
-        newSet.delete(taskId);
-      } else {
-        newSet.add(taskId);
-      }
+      if (wasCompleted) newSet.delete(taskId);
+      else newSet.add(taskId);
       return newSet;
     });
+
+    try {
+      if (!wasCompleted) {
+        await tasksApi.complete(taskId);
+      } else {
+        await tasksApi.update(taskId, { status: "PENDING" });
+      }
+    } catch (err: any) {
+      // rollback
+      setCompletedTasks(prev => {
+        const newSet = new Set(prev);
+        if (wasCompleted) newSet.add(taskId);
+        else newSet.delete(taskId);
+        return newSet;
+      });
+      toast.error(err.response?.data?.message || "Не удалось обновить задачу");
+    }
   };
 
   const getPriorityColor = (priority: string) => {
@@ -179,7 +196,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <button
             onClick={() => router.push('/deals?new=true')}
-            className="group bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-3 sm:p-4 flex flex-col items-center gap-2 shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/30"
+            className="group bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 sm:p-5 flex flex-col items-center gap-3 shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/30"
           >
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/20 flex items-center justify-center">
               <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
@@ -189,7 +206,7 @@ export default function DashboardPage() {
 
           <button
             onClick={() => router.push('/contacts?new=true')}
-            className="group glass-card rounded-2xl p-3 sm:p-4 flex flex-col items-center gap-2 hover:bg-white/5"
+            className="group glass-card rounded-2xl p-4 sm:p-5 flex flex-col items-center gap-3 hover:bg-white/5"
           >
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-cyan-500/20 flex items-center justify-center">
               <Users className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
@@ -199,7 +216,7 @@ export default function DashboardPage() {
 
           <button
             onClick={() => router.push('/tasks?new=true')}
-            className="group glass-card rounded-2xl p-3 sm:p-4 flex flex-col items-center gap-2 hover:bg-white/5"
+            className="group glass-card rounded-2xl p-4 sm:p-5 flex flex-col items-center gap-3 hover:bg-white/5"
           >
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-orange-500/20 flex items-center justify-center">
               <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400" />
@@ -209,7 +226,7 @@ export default function DashboardPage() {
 
           <button
             onClick={() => router.push('/leads')}
-            className="group glass-card rounded-2xl p-3 sm:p-4 flex flex-col items-center gap-2 hover:bg-white/5"
+            className="group glass-card rounded-2xl p-4 sm:p-5 flex flex-col items-center gap-3 hover:bg-white/5"
           >
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-violet-500/20 flex items-center justify-center">
               <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-violet-400" />
@@ -221,8 +238,8 @@ export default function DashboardPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {/* Active Deals */}
-          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="glass-card rounded-2xl sm:rounded-3xl p-3 sm:p-4">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-violet-500/20 flex items-center justify-center">
                 <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-violet-400" />
               </div>
@@ -238,8 +255,8 @@ export default function DashboardPage() {
           </div>
 
           {/* Total Amount */}
-          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="glass-card rounded-2xl sm:rounded-3xl p-3 sm:p-4">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-500/20 flex items-center justify-center">
                 <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
               </div>
@@ -251,8 +268,8 @@ export default function DashboardPage() {
           </div>
 
           {/* Today Tasks */}
-          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="glass-card rounded-2xl sm:rounded-3xl p-3 sm:p-4">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-orange-500/20 flex items-center justify-center">
                 <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-orange-400" />
               </div>
@@ -269,8 +286,8 @@ export default function DashboardPage() {
           </div>
 
           {/* Contacts */}
-          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="glass-card rounded-2xl sm:rounded-3xl p-3 sm:p-4">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-cyan-500/20 flex items-center justify-center">
                 <Users className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
               </div>

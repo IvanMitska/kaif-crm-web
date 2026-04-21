@@ -217,6 +217,11 @@
   background-clip: text;
 }
 
+/* Safe area for iOS bottom bar */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* Отключение всех анимаций */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

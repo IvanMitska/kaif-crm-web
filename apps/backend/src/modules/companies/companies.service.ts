@@ -1,12 +1,36 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, Company } from '@prisma/client';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { CompaniesFilterDto } from './dto/companies-filter.dto';
+import * as XLSX from 'xlsx';
+
+export interface CompanyImportResult {
+  success: number;
+  failed: number;
+  errors: Array<{ row: number; error: string }>;
+  duplicates: number;
+}
+
+interface CompanyRow {
+  name?: string;
+  inn?: string;
+  kpp?: string;
+  ogrn?: string;
+  website?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  description?: string;
+  industry?: string;
+  size?: string;
+}
 
 @Injectable()
 export class CompaniesService {
+  private readonly logger = new Logger(CompaniesService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async create(createCompanyDto: CreateCompanyDto, userId: string, organizationId: string) {
@@ -404,21 +428,255 @@ export class CompaniesService {
     return updated;
   }
 
-  async importCompanies(file: Express.Multer.File, userId: string, organizationId: string) {
-    // Здесь будет логика импорта из CSV/Excel
-    // Пока заглушка
-    return { message: 'Импорт компаний в разработке' };
+  async importCompanies(
+    file: Express.Multer.File,
+    userId: string,
+    organizationId: string,
+  ): Promise<CompanyImportResult> {
+    const result: CompanyImportResult = {
+      success: 0,
+      failed: 0,
+      errors: [],
+      duplicates: 0,
+    };
+
+    try {
+      // Parse file
+      const rows = this.parseCompanyFile(file);
+
+      if (rows.length === 0) {
+        throw new BadRequestException('Файл пустой или имеет неверный формат');
+      }
+
+      // Process each row
+      for (let i = 0; i < rows.length; i++) {
+        const rowIndex = i + 2; // Account for header row
+        const row = rows[i];
+
+        try {
+          // Validate required fields
+          if (!row.name) {
+            result.errors.push({
+              row: rowIndex,
+              error: 'Название компании обязательно',
+            });
+            result.failed++;
+            continue;
+          }
+
+          // Check for duplicates by INN (if provided)
+          if (row.inn) {
+            const existingByInn = await this.prisma.company.findFirst({
+              where: {
+                organizationId,
+                inn: row.inn,
+              },
+            });
+
+            if (existingByInn) {
+              result.duplicates++;
+              result.errors.push({
+                row: rowIndex,
+                error: `Дубликат: компания с ИНН ${row.inn} уже существует`,
+              });
+              result.failed++;
+              continue;
+            }
+          }
+
+          // Check for duplicates by name
+          const existingByName = await this.prisma.company.findFirst({
+            where: {
+              organizationId,
+              name: { equals: row.name.trim(), mode: 'insensitive' },
+            },
+          });
+
+          if (existingByName) {
+            result.duplicates++;
+            result.errors.push({
+              row: rowIndex,
+              error: `Дубликат: компания "${row.name}" уже существует`,
+            });
+            result.failed++;
+            continue;
+          }
+
+          // Create company
+          await this.prisma.company.create({
+            data: {
+              name: row.name.trim(),
+              inn: row.inn?.trim(),
+              kpp: row.kpp?.trim(),
+              ogrn: row.ogrn?.trim(),
+              website: row.website?.trim(),
+              email: row.email?.trim().toLowerCase(),
+              phone: this.normalizePhone(row.phone),
+              address: row.address?.trim(),
+              description: row.description?.trim(),
+              industry: row.industry?.trim(),
+              size: row.size?.trim(),
+              ownerId: userId,
+              createdById: userId,
+              organizationId,
+            },
+          });
+
+          result.success++;
+        } catch (error: any) {
+          const errorMessage = error?.message || 'Неизвестная ошибка';
+          this.logger.error(`Error importing company row ${rowIndex}: ${errorMessage}`);
+          result.errors.push({
+            row: rowIndex,
+            error: errorMessage,
+          });
+          result.failed++;
+        }
+      }
+
+      // Log import activity
+      const contacts = await this.prisma.contact.findFirst({
+        where: { organizationId },
+        select: { id: true },
+      });
+
+      if (contacts) {
+        await this.prisma.activity.create({
+          data: {
+            type: 'companies_imported',
+            description: `Импортировано компаний: ${result.success}`,
+            metadata: {
+              totalRows: rows.length,
+              success: result.success,
+              failed: result.failed,
+              duplicates: result.duplicates,
+            },
+            contactId: contacts.id,
+            userId,
+          },
+        });
+      }
+
+      return result;
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Неизвестная ошибка';
+      this.logger.error(`Company import failed: ${errorMessage}`);
+      throw new BadRequestException(`Ошибка импорта: ${errorMessage}`);
+    }
   }
 
-  async exportCompanies(filter: CompaniesFilterDto, organizationId: string) {
-    const companies = await this.findAll(
-      { ...filter, take: 10000 },
-      organizationId
+  async exportCompanies(
+    filter: CompaniesFilterDto,
+    organizationId: string,
+    format: 'csv' | 'xlsx' = 'xlsx',
+  ): Promise<Buffer> {
+    // Fetch all companies matching filter (up to 50000 for export)
+    const { data: companies } = await this.findAll(
+      { ...filter, take: 50000, skip: 0 },
+      organizationId,
     );
 
-    // Здесь будет логика экспорта в CSV/Excel
-    // Пока заглушка
-    return { message: 'Экспорт компаний в разработке', count: companies.total };
+    // Prepare data for export
+    const exportData = companies.map((company: any) => ({
+      'Название': company.name,
+      'ИНН': company.inn || '',
+      'КПП': company.kpp || '',
+      'ОГРН': company.ogrn || '',
+      'Сайт': company.website || '',
+      'Email': company.email || '',
+      'Телефон': company.phone || '',
+      'Адрес': company.address || '',
+      'Отрасль': company.industry || '',
+      'Размер': this.translateSize(company.size),
+      'Описание': company.description || '',
+      'Ответственный': company.owner
+        ? `${company.owner.firstName} ${company.owner.lastName}`
+        : '',
+      'Контактов': company._count?.contacts || 0,
+      'Сделок': company._count?.deals || 0,
+      'Дата создания': new Date(company.createdAt).toLocaleDateString('ru-RU'),
+    }));
+
+    // Create workbook
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Компании');
+
+    // Set column widths
+    worksheet['!cols'] = [
+      { wch: 30 }, // Название
+      { wch: 12 }, // ИНН
+      { wch: 10 }, // КПП
+      { wch: 15 }, // ОГРН
+      { wch: 25 }, // Сайт
+      { wch: 25 }, // Email
+      { wch: 15 }, // Телефон
+      { wch: 40 }, // Адрес
+      { wch: 20 }, // Отрасль
+      { wch: 15 }, // Размер
+      { wch: 30 }, // Описание
+      { wch: 20 }, // Ответственный
+      { wch: 10 }, // Контактов
+      { wch: 8 },  // Сделок
+      { wch: 12 }, // Дата создания
+    ];
+
+    // Generate buffer
+    const buffer = XLSX.write(workbook, {
+      type: 'buffer',
+      bookType: format === 'csv' ? 'csv' : 'xlsx',
+    });
+
+    return buffer;
+  }
+
+  private parseCompanyFile(file: Express.Multer.File): CompanyRow[] {
+    const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet);
+
+    // Map columns to CompanyRow fields
+    return jsonData.map((row) => ({
+      name: row['Название'] || row['name'] || row['Name'] || row['Компания'] || row['Company'],
+      inn: row['ИНН'] || row['inn'] || row['INN'],
+      kpp: row['КПП'] || row['kpp'] || row['KPP'],
+      ogrn: row['ОГРН'] || row['ogrn'] || row['OGRN'],
+      website: row['Сайт'] || row['website'] || row['Website'] || row['URL'],
+      email: row['Email'] || row['email'] || row['E-mail'],
+      phone: row['Телефон'] || row['phone'] || row['Phone'],
+      address: row['Адрес'] || row['address'] || row['Address'],
+      description: row['Описание'] || row['description'] || row['Description'] || row['Notes'],
+      industry: row['Отрасль'] || row['industry'] || row['Industry'],
+      size: row['Размер'] || row['size'] || row['Size'],
+    }));
+  }
+
+  private normalizePhone(phone?: string): string | undefined {
+    if (!phone) return undefined;
+    const cleaned = phone.toString().replace(/[^\d+]/g, '');
+    if (!cleaned) return undefined;
+    if (cleaned.startsWith('8') && cleaned.length === 11) {
+      return '+7' + cleaned.slice(1);
+    }
+    if (cleaned.startsWith('7') && cleaned.length === 11) {
+      return '+' + cleaned;
+    }
+    if (!cleaned.startsWith('+')) {
+      return '+' + cleaned;
+    }
+    return cleaned;
+  }
+
+  private translateSize(size?: string): string {
+    if (!size) return '';
+    const translations: Record<string, string> = {
+      'MICRO': 'Микро (до 15 чел.)',
+      'SMALL': 'Малое (16-100 чел.)',
+      'MEDIUM': 'Среднее (101-250 чел.)',
+      'LARGE': 'Крупное (250+ чел.)',
+    };
+    return translations[size] || size;
   }
 
   private async createActivity(

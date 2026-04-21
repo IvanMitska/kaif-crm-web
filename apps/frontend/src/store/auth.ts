@@ -32,6 +32,7 @@ interface AuthState {
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  hasHydrated: boolean;
   organization: Organization | null;
   orgRole: 'OWNER' | 'ADMIN' | 'MANAGER' | 'OPERATOR' | null;
   organizations: OrganizationMembership[];
@@ -46,6 +47,7 @@ interface AuthState {
   setOrganization: (organization: Organization | null) => void;
   updateOrganization: (updates: Partial<Organization>) => void;
   updateUser: (updates: Partial<User>) => void;
+  setHasHydrated: (v: boolean) => void;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -58,6 +60,7 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
+      hasHydrated: false,
       organization: null,
       orgRole: null,
       organizations: [],
@@ -232,6 +235,7 @@ export const useAuthStore = create<AuthState>()(
           set({ user: { ...user, ...updates } });
         }
       },
+      setHasHydrated: (v) => set({ hasHydrated: v }),
     }),
     {
       name: 'auth-storage',
@@ -244,6 +248,12 @@ export const useAuthStore = create<AuthState>()(
         orgRole: state.orgRole,
         organizations: state.organizations,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.accessToken) {
+          axios.defaults.headers.common['Authorization'] = `Bearer ${state.accessToken}`;
+        }
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

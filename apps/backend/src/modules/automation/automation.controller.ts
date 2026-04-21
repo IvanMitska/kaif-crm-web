@@ -16,6 +16,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationGuard } from '../auth/guards/organization.guard';
 import { OrgRoles } from '../auth/decorators/org-roles.decorator';
 import { CurrentOrg } from '../auth/decorators/current-org.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { OrgRole } from '@prisma/client';
 
 @ApiTags('Automation')
@@ -73,8 +74,12 @@ export class AutomationController {
   execute(
     @Param('id') id: string,
     @CurrentOrg() organizationId: string,
+    @CurrentUser('id') userId: string,
   ) {
-    return this.automationService.execute(id, organizationId);
+    return this.automationService.execute(id, {
+      userId,
+      organizationId,
+    });
   }
 
   @Delete(':id')

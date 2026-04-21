@@ -59,18 +59,30 @@ export default function TasksPage() {
           dealsApi.getAll(),
         ]);
 
-        const tasksData = tasksRes.data?.items || tasksRes.data || [];
-        const tasksArray = Array.isArray(tasksData) ? tasksData as Task[] : [];
+        const tasksData = tasksRes.data?.items || tasksRes.data?.data || tasksRes.data || [];
+        const tasksArray = (Array.isArray(tasksData) ? tasksData : []).map((t: any) => ({
+          ...t,
+          assignee: t.assignee
+            ? {
+                ...t.assignee,
+                name:
+                  t.assignee.name ||
+                  `${t.assignee.firstName || ""} ${t.assignee.lastName || ""}`.trim() ||
+                  t.assignee.email ||
+                  "—",
+              }
+            : undefined,
+        })) as Task[];
         setTasks(tasksArray);
 
-        const contactsData = contactsRes.data?.items || contactsRes.data || [];
+        const contactsData = contactsRes.data?.items || contactsRes.data?.data || contactsRes.data || [];
         const contactsArray = Array.isArray(contactsData) ? contactsData : [];
         setContacts(contactsArray.map((c: any) => ({
           id: c.id,
           name: `${c.firstName} ${c.lastName}`
         })));
 
-        const dealsData = dealsRes.data?.items || dealsRes.data || [];
+        const dealsData = dealsRes.data?.items || dealsRes.data?.data || dealsRes.data || [];
         const dealsArray = Array.isArray(dealsData) ? dealsData : [];
         setDeals(dealsArray.map((d: any) => ({ id: d.id, title: d.title })));
 

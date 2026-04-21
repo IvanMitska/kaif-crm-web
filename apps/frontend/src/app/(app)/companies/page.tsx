@@ -24,6 +24,7 @@ import {
   ChevronDown,
   Filter,
   Download,
+  Upload,
   Star,
   StarOff,
   Briefcase,
@@ -37,6 +38,7 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { companiesApi } from "@/lib/api";
 import { CompanyModal } from "@/components/companies/CompanyModal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "sonner";
 
 interface Company {
   id: string;
@@ -76,6 +78,9 @@ export default function CompaniesPage() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -92,7 +97,7 @@ export default function CompaniesPage() {
     const fetchCompanies = async () => {
       try {
         const response = await companiesApi.getAll();
-        const companiesData = response.data?.items || response.data || [];
+        const companiesData = response.data?.items || response.data?.data || response.data || [];
         setCompanies(Array.isArray(companiesData) ? companiesData as Company[] : []);
       } catch (error) {
         console.error("Failed to fetch companies:", error);
@@ -186,6 +191,48 @@ export default function CompaniesPage() {
     });
   };
 
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const res = await companiesApi.export();
+      const blob = new Blob([res.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `companies-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success("Компании выгружены");
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Не удалось экспортировать");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImportClick = () => importInputRef.current?.click();
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsImporting(true);
+    try {
+      const res = await companiesApi.import(file);
+      const count = res.data?.imported ?? res.data?.count ?? 0;
+      toast.success(`Импортировано компаний: ${count}`);
+      const listRes = await companiesApi.getAll();
+      const items = listRes.data?.items || listRes.data?.data || listRes.data || [];
+      setCompanies(Array.isArray(items) ? items : []);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Не удалось импортировать");
+    } finally {
+      setIsImporting(false);
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  };
+
   // Modal handlers
   const handleOpenCreateModal = () => {
     setEditingCompany(null);
@@ -257,8 +304,8 @@ export default function CompaniesPage() {
     }
   };
 
-  const totalRevenue = companies.reduce((sum, c) => sum + c.revenue, 0);
-  const totalEmployees = companies.reduce((sum, c) => sum + c.employees, 0);
+  const totalRevenue = companies.reduce((sum, c) => sum + (Number(c.revenue) || 0), 0);
+  const totalEmployees = companies.reduce((sum, c) => sum + (Number(c.employees) || 0), 0);
   const activeCompanies = companies.filter((c) => c.status === "active").length;
 
   const isAllSelected = filteredCompanies.length > 0 && selectedCompanies.size === filteredCompanies.length;
@@ -341,10 +388,30 @@ export default function CompaniesPage() {
               </button>
             </div>
 
-            {/* Export - hidden on mobile */}
-            <button className="hidden sm:block p-2.5 hover:bg-white/5 rounded-xl">
+            {/* Import/Export - hidden on mobile */}
+            <button
+              onClick={handleExport}
+              disabled={isExporting}
+              title="Экспорт в Excel"
+              className="hidden sm:block p-2.5 hover:bg-white/5 rounded-xl disabled:opacity-50"
+            >
               <Download className="w-5 h-5 text-gray-400" />
             </button>
+            <button
+              onClick={handleImportClick}
+              disabled={isImporting}
+              title="Импорт из Excel/CSV"
+              className="hidden sm:block p-2.5 hover:bg-white/5 rounded-xl disabled:opacity-50"
+            >
+              <Upload className="w-5 h-5 text-gray-400" />
+            </button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              onChange={handleImportFile}
+              className="hidden"
+            />
 
             {/* Add Button */}
             <button
@@ -553,14 +620,14 @@ export default function CompaniesPage() {
 
                     {/* Revenue */}
                     <div className="w-[130px] px-4">
-                      <span className="text-sm font-semibold text-white">{formatRevenue(company.revenue)}</span>
+                      <span className="text-sm font-semibold text-white">{company.revenue ? formatRevenue(Number(company.revenue)) : "—"}</span>
                     </div>
 
                     {/* Employees */}
                     <div className="w-[100px] px-4">
                       <div className="flex items-center gap-1.5">
                         <Users className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-300">{company.employees}</span>
+                        <span className="text-sm text-gray-300">{company.employees || company.size || "—"}</span>
                       </div>
                     </div>
 
@@ -678,11 +745,11 @@ export default function CompaniesPage() {
                     <div className="grid grid-cols-2 gap-3 mb-4">
                       <div className="bg-white/5 rounded-xl p-3">
                         <p className="text-xs text-gray-400 mb-1">Выручка</p>
-                        <p className="text-sm font-bold text-white">{formatRevenue(company.revenue)}</p>
+                        <p className="text-sm font-bold text-white">{company.revenue ? formatRevenue(Number(company.revenue)) : "—"}</p>
                       </div>
                       <div className="bg-white/5 rounded-xl p-3">
                         <p className="text-xs text-gray-400 mb-1">Сотрудники</p>
-                        <p className="text-sm font-bold text-white">{company.employees}</p>
+                        <p className="text-sm font-bold text-white">{company.employees || company.size || "—"}</p>
                       </div>
                     </div>
 

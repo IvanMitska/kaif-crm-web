@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   Plus,
   Search,
@@ -30,10 +32,11 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { dealsApi, pipelinesApi } from "@/lib/api";
+import { dealsApi, pipelinesApi, contactsApi, tasksApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { DealModal } from "@/components/deals/DealModal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 import { useCurrency } from "@/hooks/useCurrency";
 
 interface Deal {
@@ -249,7 +252,7 @@ function KanbanColumn({
   onAddDeal: (stageId: string) => void;
 }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const stageTotal = deals.reduce((sum, d) => sum + d.amount, 0);
+  const stageTotal = deals.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
   const { formatCompact } = useCurrency();
 
   // Empty state messages
@@ -368,6 +371,7 @@ function DealDetailModal({
   onClose,
   onEdit,
   onDelete,
+  onQuickAction,
 }: {
   deal: Deal | null;
   stages: Array<{ id: string; name: string; color: string; order: number }>;
@@ -375,6 +379,7 @@ function DealDetailModal({
   onClose: () => void;
   onEdit?: (deal: Deal) => void;
   onDelete?: (deal: Deal) => void;
+  onQuickAction?: (action: string, deal: Deal) => void;
 }) {
   const [activeTab, setActiveTab] = useState<"info" | "tasks" | "history">("info");
   const { format } = useCurrency();
@@ -493,15 +498,24 @@ function DealDetailModal({
         {/* Quick actions */}
         <div className="px-6 py-4 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <button className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-green-500 text-white font-medium hover:bg-green-600">
+            <button
+              onClick={() => onQuickAction?.("call", deal)}
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-green-500 text-white font-medium hover:bg-green-600"
+            >
               <Phone className="w-5 h-5" />
               Позвонить
             </button>
-            <button className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-violet-500 text-white font-medium hover:bg-violet-600">
+            <button
+              onClick={() => onQuickAction?.("task", deal)}
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-violet-500 text-white font-medium hover:bg-violet-600"
+            >
               <CheckSquare className="w-5 h-5" />
               Добавить задачу
             </button>
-            <button className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-purple-500 text-white font-medium hover:bg-purple-600">
+            <button
+              onClick={() => onQuickAction?.("message", deal)}
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-purple-500 text-white font-medium hover:bg-purple-600"
+            >
               <Mail className="w-5 h-5" />
               Написать
             </button>
@@ -695,8 +709,10 @@ function DealDetailModal({
 }
 
 export default function DealsPage() {
+  const router = useRouter();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [pipelines, setPipelines] = useState<any[]>([]);
+  const [contactOptions, setContactOptions] = useState<{ id: string; name: string }[]>([]);
   const { formatCompact, format } = useCurrency();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -715,20 +731,33 @@ export default function DealsPage() {
   const [deletingDeal, setDeletingDeal] = useState<Deal | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Task dialog state (for "Add task" quick action from a deal)
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+  const [taskDialogPrefill, setTaskDialogPrefill] = useState<any>(null);
+
   // Fetch data from API
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [dealsRes, pipelinesRes] = await Promise.all([
+        const [dealsRes, pipelinesRes, contactsRes] = await Promise.all([
           dealsApi.getAll(),
           pipelinesApi.getAll(),
+          contactsApi.getAll(),
         ]);
 
-        const dealsData = dealsRes.data?.items || dealsRes.data || [];
+        const dealsData = dealsRes.data?.items || dealsRes.data?.data || dealsRes.data || [];
         setDeals(Array.isArray(dealsData) ? dealsData : []);
 
         const pipelinesData = Array.isArray(pipelinesRes.data) ? pipelinesRes.data : [pipelinesRes.data];
         setPipelines(pipelinesData);
+
+        const contactsData = contactsRes.data?.items || contactsRes.data?.data || contactsRes.data || [];
+        setContactOptions(
+          (Array.isArray(contactsData) ? contactsData : []).map((c: any) => ({
+            id: c.id,
+            name: `${c.firstName || ""} ${c.lastName || ""}`.trim() || c.email || c.phone || "—",
+          }))
+        );
       } catch (error) {
         console.error("Failed to fetch deals:", error);
       }
@@ -761,7 +790,7 @@ export default function DealsPage() {
     return filteredDeals.filter(deal => deal.stageId === stageId);
   };
 
-  const totalAmount = deals.reduce((sum, deal) => sum + deal.amount, 0);
+  const totalAmount = deals.reduce((sum, deal) => sum + (Number(deal.amount) || 0), 0);
   const avgDealSize = deals.length > 0 ? totalAmount / deals.length : 0;
 
   const formatDate = (dateString: string) => {
@@ -769,9 +798,64 @@ export default function DealsPage() {
     return date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
   };
 
-  const handleQuickAction = (action: string, deal: Deal) => {
-    console.log(`Quick action: ${action}`, deal);
-    // TODO: Implement quick actions
+  const handleQuickAction = async (action: string, deal: Deal) => {
+    if (action === "call") {
+      if (!deal.contact?.id) {
+        toast.error("У сделки нет привязанного контакта");
+        return;
+      }
+      try {
+        const res = await contactsApi.getById(deal.contact.id);
+        const phone = res.data?.phone;
+        if (!phone) {
+          toast.error("У контакта не указан телефон");
+          return;
+        }
+        window.location.href = `tel:${phone}`;
+      } catch {
+        toast.error("Не удалось получить номер телефона");
+      }
+      return;
+    }
+
+    if (action === "task") {
+      setTaskDialogPrefill({
+        dealId: deal.id,
+        contactId: deal.contact?.id,
+      });
+      setIsTaskDialogOpen(true);
+      return;
+    }
+
+    if (action === "message") {
+      if (!deal.contact?.id) {
+        toast.error("У сделки нет привязанного контакта");
+        return;
+      }
+      router.push(`/messages?contactId=${deal.contact.id}`);
+      return;
+    }
+  };
+
+  const handleTaskDialogSubmit = async (taskData: any) => {
+    try {
+      const payload: any = {
+        title: taskData.title,
+        description: taskData.description,
+        priority: taskData.priority,
+        status: taskData.status,
+        dueDate: taskData.dueDate,
+        dealId: taskData.deal?.id || taskDialogPrefill?.dealId,
+        contactId: taskData.contact?.id || taskDialogPrefill?.contactId,
+      };
+      Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
+      await tasksApi.create(payload);
+      toast.success("Задача создана");
+      setIsTaskDialogOpen(false);
+      setTaskDialogPrefill(null);
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Не удалось создать задачу");
+    }
   };
 
   // Modal handlers
@@ -1098,6 +1182,7 @@ export default function DealsPage() {
         onClose={() => setSelectedDeal(null)}
         onEdit={handleOpenEditModal}
         onDelete={handleOpenDeleteDialog}
+        onQuickAction={handleQuickAction}
       />
 
       {/* Deal Create/Edit Modal */}
@@ -1124,6 +1209,20 @@ export default function DealsPage() {
         cancelText="Отмена"
         variant="danger"
         isLoading={isDeleting}
+      />
+
+      {/* Create Task from Deal */}
+      <CreateTaskDialog
+        open={isTaskDialogOpen}
+        onOpenChange={(open) => {
+          setIsTaskDialogOpen(open);
+          if (!open) setTaskDialogPrefill(null);
+        }}
+        onSubmit={handleTaskDialogSubmit}
+        contacts={contactOptions}
+        deals={deals.map((d) => ({ id: d.id, title: d.title }))}
+        prefillDealId={taskDialogPrefill?.dealId}
+        prefillContactId={taskDialogPrefill?.contactId}
       />
     </div>
   );

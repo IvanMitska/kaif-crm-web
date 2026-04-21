@@ -1,15 +1,22 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, Task, TaskStatus, TaskPriority } from '@prisma/client';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TasksFilterDto } from './dto/tasks-filter.dto';
 import { CalendarFilterDto } from './dto/calendar-filter.dto';
+import { AutomationService, AutomationTriggerType } from '../automation/automation.service';
 import { addDays, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
 @Injectable()
 export class TasksService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(TasksService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => AutomationService))
+    private automationService: AutomationService,
+  ) {}
 
   async create(createTaskDto: CreateTaskDto, userId: string, organizationId: string) {
     const task = await this.prisma.task.create({
@@ -68,6 +75,9 @@ export class TasksService {
         taskId: task.id,
       });
     }
+
+    // Trigger automation for task creation
+    this.triggerTaskCreatedAutomation(task.id, task.contactId, task.dealId, userId, organizationId);
 
     return task;
   }
@@ -566,5 +576,33 @@ export class TasksService {
       task_updated: 'Задача обновлена',
     };
     return descriptions[type] || type;
+  }
+
+  private async triggerTaskCreatedAutomation(
+    taskId: string,
+    contactId: string | null,
+    dealId: string | null,
+    userId: string,
+    organizationId: string,
+  ) {
+    try {
+      const results = await this.automationService.executeByTrigger(
+        AutomationTriggerType.TASK_CREATED,
+        {
+          taskId,
+          contactId: contactId || undefined,
+          dealId: dealId || undefined,
+          userId,
+          organizationId,
+        },
+      );
+
+      if (results.length > 0) {
+        const successCount = results.filter((r) => r.success).length;
+        this.logger.log(`Task created automations: ${successCount}/${results.length} successful`);
+      }
+    } catch (error: any) {
+      this.logger.error(`Failed to trigger task created automations: ${error?.message}`);
+    }
   }
 }

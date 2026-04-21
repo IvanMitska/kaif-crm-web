@@ -66,3 +66,9 @@ Thumbs.db
 # Test
 test-results
 playwright-report
+
+# Claude Code local settings
+.claude/
+
+# Debug artifacts
+email-preview.html

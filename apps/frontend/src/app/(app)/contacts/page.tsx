@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { contactsApi } from "@/lib/api";
 import { ContactModal } from "@/components/contacts/ContactModal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "sonner";
 
 interface Contact {
   id: string;
@@ -64,12 +65,20 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
 
   // Fetch contacts from API
+  const normalizeContact = (c: any): Contact => ({
+    ...c,
+    tags: Array.isArray(c?.tags)
+      ? c.tags.map((t: any) => (typeof t === "string" ? t : t?.name)).filter(Boolean)
+      : [],
+  });
+
   useEffect(() => {
     const fetchContacts = async () => {
       try {
         const response = await contactsApi.getAll();
-        const contactsData = response.data?.items || response.data || [];
-        setContacts(Array.isArray(contactsData) ? contactsData as Contact[] : []);
+        const contactsData = response.data?.items || response.data?.data || response.data || [];
+        const normalized = (Array.isArray(contactsData) ? contactsData : []).map(normalizeContact);
+        setContacts(normalized);
       } catch (error) {
         console.error("Failed to fetch contacts:", error);
       }
@@ -85,6 +94,9 @@ export default function ContactsPage() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -166,6 +178,48 @@ export default function ContactsPage() {
     });
   };
 
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const res = await contactsApi.export();
+      const blob = new Blob([res.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `contacts-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success("Контакты выгружены");
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Не удалось экспортировать");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImportClick = () => importInputRef.current?.click();
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsImporting(true);
+    try {
+      const res = await contactsApi.import(file);
+      const count = res.data?.imported ?? res.data?.count ?? 0;
+      toast.success(`Импортировано контактов: ${count}`);
+      const listRes = await contactsApi.getAll();
+      const items = listRes.data?.items || listRes.data?.data || listRes.data || [];
+      setContacts((Array.isArray(items) ? items : []).map(normalizeContact));
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Не удалось импортировать");
+    } finally {
+      setIsImporting(false);
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  };
+
   // Modal handlers
   const handleOpenCreateModal = () => {
     setEditingContact(null);
@@ -189,12 +243,12 @@ export default function ContactsPage() {
       if (editingContact?.id) {
         // Update existing contact via API
         const response = await contactsApi.update(editingContact.id, contactData);
-        const updatedContact = response.data;
+        const updatedContact = normalizeContact(response.data);
         setContacts(contacts.map(c => c.id === editingContact.id ? { ...c, ...updatedContact } : c));
       } else {
         // Create new contact via API
         const response = await contactsApi.create(contactData);
-        const newContact = response.data;
+        const newContact = normalizeContact(response.data);
         setContacts([newContact, ...contacts]);
       }
       handleCloseModal();
@@ -316,12 +370,29 @@ export default function ContactsPage() {
             </div>
 
             {/* Import/Export - hidden on mobile */}
-            <button className="hidden sm:block p-2.5 hover:bg-white/5 rounded-xl">
+            <button
+              onClick={handleExport}
+              disabled={isExporting}
+              title="Экспорт в Excel"
+              className="hidden sm:block p-2.5 hover:bg-white/5 rounded-xl disabled:opacity-50"
+            >
               <Download className="w-5 h-5 text-gray-400" />
             </button>
-            <button className="hidden sm:block p-2.5 hover:bg-white/5 rounded-xl">
+            <button
+              onClick={handleImportClick}
+              disabled={isImporting}
+              title="Импорт из Excel/CSV"
+              className="hidden sm:block p-2.5 hover:bg-white/5 rounded-xl disabled:opacity-50"
+            >
               <Upload className="w-5 h-5 text-gray-400" />
             </button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              onChange={handleImportFile}
+              className="hidden"
+            />
 
             {/* Add Button */}
             <button

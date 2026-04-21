@@ -63,6 +63,9 @@ interface CreateTaskDialogProps {
   contacts?: { id: string; name: string }[];
   deals?: { id: string; title: string }[];
   editTask?: Task | null;
+  prefillDealId?: string;
+  prefillContactId?: string;
+  prefillTitle?: string;
 }
 
 type ReminderType = "none" | "15min" | "30min" | "1hour" | "1day" | "custom";
@@ -127,6 +130,9 @@ export function CreateTaskDialog({
   contacts = [],
   deals = [],
   editTask,
+  prefillDealId,
+  prefillContactId,
+  prefillTitle,
 }: CreateTaskDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -178,8 +184,11 @@ export function CreateTaskDialog({
       setChecklist(editTask.checklist || []);
     } else {
       resetForm();
+      if (prefillDealId) setDealId(prefillDealId);
+      if (prefillContactId) setContactId(prefillContactId);
+      if (prefillTitle) setTitle(prefillTitle);
     }
-  }, [editTask, initialStatus, open]);
+  }, [editTask, initialStatus, open, prefillDealId, prefillContactId, prefillTitle]);
 
   const handleSubmit = async () => {
     if (!title.trim()) return;

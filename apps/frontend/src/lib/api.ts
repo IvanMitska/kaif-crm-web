@@ -86,6 +86,15 @@ export const contactsApi = {
   create: (data: any) => api.post('/contacts', data),
   update: (id: string, data: any) => api.patch(`/contacts/${id}`, data),
   delete: (id: string) => api.delete(`/contacts/${id}`),
+  export: (params?: Record<string, any>) =>
+    api.get('/contacts/export', { params, responseType: 'blob' }),
+  import: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post('/contacts/import', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 // Deals API
@@ -115,6 +124,15 @@ export const companiesApi = {
   create: (data: any) => api.post('/companies', data),
   update: (id: string, data: any) => api.patch(`/companies/${id}`, data),
   delete: (id: string) => api.delete(`/companies/${id}`),
+  export: (params?: Record<string, any>) =>
+    api.get('/companies/export', { params, responseType: 'blob' }),
+  import: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post('/companies/import', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 // Pipelines API
@@ -537,6 +555,31 @@ export const messagesApi = {
   // Send message helper
   send: (data: { contactId: string; content: string; channel: string; metadata?: Record<string, any> }) =>
     api.post('/messages/send', data),
+};
+
+// Automation API
+export const automationApi = {
+  getAll: () => api.get('/automation'),
+  getActive: () => api.get('/automation/active'),
+  getById: (id: string) => api.get(`/automation/${id}`),
+  create: (data: {
+    name: string;
+    description?: string;
+    trigger: { type: string; config?: Record<string, any> };
+    conditions?: any[];
+    actions: Array<{ type: string; config: Record<string, any> }>;
+    isActive?: boolean;
+  }) => api.post('/automation', data),
+  update: (id: string, data: Partial<{
+    name: string;
+    description: string;
+    trigger: { type: string; config?: Record<string, any> };
+    conditions: any[];
+    actions: Array<{ type: string; config: Record<string, any> }>;
+    isActive: boolean;
+  }>) => api.patch(`/automation/${id}`, data),
+  execute: (id: string) => api.post(`/automation/${id}/execute`),
+  delete: (id: string) => api.delete(`/automation/${id}`),
 };
 
 // Integrations API (общий для всех интеграций)

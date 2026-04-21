@@ -13,7 +13,9 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { CompaniesService } from './companies.service';
@@ -97,11 +99,19 @@ export class CompaniesController {
   @Get('export')
   @ApiOperation({ summary: 'Экспортировать компании' })
   @ApiResponse({ status: 200, description: 'Файл с компаниями' })
-  exportCompanies(
+  async exportCompanies(
     @Query() filter: CompaniesFilterDto,
     @CurrentOrg() organizationId: string,
+    @Res() res: Response,
   ) {
-    return this.companiesService.exportCompanies(filter, organizationId);
+    const buffer = await this.companiesService.exportCompanies(filter, organizationId);
+    const filename = `companies-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': buffer.length,
+    });
+    res.send(buffer);
   }
 
   @Get(':id')

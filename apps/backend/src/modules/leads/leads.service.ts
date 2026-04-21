@@ -1,13 +1,20 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { LeadsFilterDto } from './dto/leads-filter.dto';
+import { AutomationService, AutomationTriggerType } from '../automation/automation.service';
 
 @Injectable()
 export class LeadsService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(LeadsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => AutomationService))
+    private automationService: AutomationService,
+  ) {}
 
   async create(createLeadDto: CreateLeadDto, userId: string, organizationId: string) {
     const lead = await this.prisma.lead.create({
@@ -36,6 +43,9 @@ export class LeadsService {
         },
       },
     });
+
+    // Trigger automation for lead creation
+    this.triggerLeadCreatedAutomation(lead.id, userId, organizationId);
 
     return lead;
   }
@@ -240,5 +250,25 @@ export class LeadsService {
         return acc;
       }, {} as Record<string, number>),
     };
+  }
+
+  private async triggerLeadCreatedAutomation(
+    leadId: string,
+    userId: string,
+    organizationId: string,
+  ) {
+    try {
+      const results = await this.automationService.executeByTrigger(
+        AutomationTriggerType.LEAD_CREATED,
+        { leadId, userId, organizationId },
+      );
+
+      if (results.length > 0) {
+        const successCount = results.filter((r) => r.success).length;
+        this.logger.log(`Lead created automations: ${successCount}/${results.length} successful`);
+      }
+    } catch (error: any) {
+      this.logger.error(`Failed to trigger lead created automations: ${error?.message}`);
+    }
   }
 }
